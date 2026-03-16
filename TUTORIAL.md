@@ -40,6 +40,8 @@
 31. [Checkpointing — Safe Experimentation](#31-checkpointing--safe-experimentation)
 32. [Claude Code on the Web — Cloud Execution](#32-claude-code-on-the-web--cloud-execution)
 33. [Remote Control — Work From Any Device](#33-remote-control--work-from-any-device)
+34. [Chrome Extension — Browser Automation](#34-chrome-extension--browser-automation)
+35. [Slack Integration — Team Workflows](#35-slack-integration--team-workflows)
 
 ---
 
@@ -2723,9 +2725,111 @@ claude --remote-control "My Project"
 
 ---
 
+## 34. Chrome Extension — Browser Automation
+
+Connect Claude Code to your Chrome browser to test web apps, debug with console logs, automate forms, and extract data — all from the CLI.
+
+### 34.1 Setup
+
+1. Install [Google Chrome](https://www.google.com/chrome/) or Microsoft Edge
+2. Install [Claude in Chrome extension](https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn) (v1.0.36+)
+3. Start Claude Code with `claude --chrome` or run `/chrome` in a session
+
+### 34.2 Capabilities
+
+| Capability | Example |
+|-----------|---------|
+| **Live debugging** | Read console errors, fix the code that caused them |
+| **Design verification** | Build UI from Figma mock, verify in browser |
+| **Web app testing** | Test form validation, check visual regressions |
+| **Authenticated apps** | Interact with Google Docs, Gmail, Notion (uses your login state) |
+| **Data extraction** | Pull structured data from web pages → CSV |
+| **Form automation** | Fill forms from CSV data across multiple pages |
+| **GIF recording** | Record browser interactions as shareable GIFs |
+
+### 34.3 Example Workflows
+
+```
+# Test local web app
+"Open localhost:3000, try submitting the form with invalid data,
+check if error messages appear correctly"
+
+# Debug with console logs
+"Open the dashboard page and check the console for errors on load"
+
+# Extract data
+"Go to the product listings page, extract name/price/availability
+for each item, save as CSV"
+
+# Draft in Google Docs
+"Draft a project update based on recent commits and add it to my
+Google Doc at docs.google.com/document/d/abc123"
+
+# Record a demo
+"Record a GIF showing the checkout flow from cart to confirmation"
+```
+
+### 34.4 Enable by Default
+
+```
+/chrome → "Enabled by default"
+```
+
+Note: Increases context usage since browser tools are always loaded.
+
+---
+
+## 35. Slack Integration — Team Workflows
+
+Mention `@Claude` in Slack with a coding task, and Claude creates a web session, implements the fix, and posts results back to your thread.
+
+### 35.1 Setup
+
+1. Install Claude app from [Slack App Marketplace](https://slack.com/marketplace/A08SF47R6P4)
+2. Connect your Claude account in the App Home tab
+3. Connect GitHub repos at [claude.ai/code](https://claude.ai/code)
+4. Choose routing mode: **Code only** or **Code + Chat**
+5. Invite Claude to channels: `/invite @Claude`
+
+### 35.2 How It Works
+
+1. You `@Claude` with a coding request in a channel/thread
+2. Claude detects coding intent and creates a web session
+3. Progress updates posted to your Slack thread
+4. On completion: summary + "View Session" + "Create PR" buttons
+
+### 35.3 Example Requests
+
+```
+@Claude Fix the login bug reported in this thread — the session
+timeout isn't being handled correctly in src/auth/
+
+@Claude Implement the feature described in issue #42 and create a PR
+
+@Claude Review the recent changes to the payment module for
+security vulnerabilities
+```
+
+### 35.4 Context Gathering
+
+- **In threads**: Claude reads all messages in the thread for context
+- **In channels**: Claude reads recent channel messages
+- Context informs repo selection, problem understanding, and approach
+
+### 35.5 When to Use Slack vs. Web
+
+| Use Slack When | Use Web When |
+|---|---|
+| Context already in a Slack discussion | Need to upload files |
+| Kick off tasks asynchronously | Want real-time interaction |
+| Team needs visibility | Complex, longer tasks |
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
