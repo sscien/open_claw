@@ -70,6 +70,9 @@
 61. [Language-Specific Guides](#61-language-specific-guides)
 62. [Common Anti-Patterns & How to Fix Them](#62-common-anti-patterns--how-to-fix-them)
 63. [Frequently Asked Questions](#63-frequently-asked-questions)
+64. [Enterprise Networking & Proxy Configuration](#64-enterprise-networking--proxy-configuration)
+65. [Data Privacy & Compliance](#65-data-privacy--compliance)
+66. [Deployment Comparison Guide](#66-deployment-comparison-guide)
 
 ---
 
@@ -5032,11 +5035,204 @@ A: `rm -rf ~/.claude && rm ~/.claude.json` removes all settings. Reinstall with 
 
 ---
 
+## 64. Enterprise Networking & Proxy Configuration
+
+### 64.1 Corporate Proxy Setup
+
+```bash
+# HTTPS proxy (recommended)
+export HTTPS_PROXY=https://proxy.example.com:8080
+
+# HTTP proxy fallback
+export HTTP_PROXY=http://proxy.example.com:8080
+
+# Bypass proxy for specific hosts
+export NO_PROXY="localhost 192.168.1.1 example.com .example.com"
+
+# Proxy with basic authentication
+export HTTPS_PROXY=http://username:password@proxy.example.com:8080
+```
+
+### 64.2 Custom CA Certificates
+
+For enterprise environments with custom CAs for HTTPS inspection:
+
+```bash
+export NODE_EXTRA_CA_CERTS=/path/to/ca-cert.pem
+```
+
+### 64.3 mTLS (Mutual TLS) Authentication
+
+For environments requiring client certificate authentication:
+
+```bash
+export CLAUDE_CODE_CLIENT_CERT=/path/to/client-cert.pem
+export CLAUDE_CODE_CLIENT_KEY=/path/to/client-key.pem
+export CLAUDE_CODE_CLIENT_KEY_PASSPHRASE="your-passphrase"  # Optional
+```
+
+### 64.4 LLM Gateway Configuration
+
+Route traffic through a centralized gateway for usage tracking, rate limiting, and auth management:
+
+```bash
+# Anthropic API gateway
+export ANTHROPIC_BASE_URL='https://your-llm-gateway.com/anthropic'
+
+# Bedrock gateway
+export ANTHROPIC_BEDROCK_BASE_URL='https://your-llm-gateway.com/bedrock'
+export CLAUDE_CODE_SKIP_BEDROCK_AUTH=1  # If gateway handles AWS auth
+
+# Vertex AI gateway
+export ANTHROPIC_VERTEX_BASE_URL='https://your-llm-gateway.com/vertex'
+export CLAUDE_CODE_SKIP_VERTEX_AUTH=1  # If gateway handles GCP auth
+
+# Foundry gateway
+export ANTHROPIC_FOUNDRY_BASE_URL='https://your-llm-gateway.com'
+export CLAUDE_CODE_SKIP_FOUNDRY_AUTH=1  # If gateway handles Azure auth
+```
+
+### 64.5 Required Network Access
+
+Ensure these URLs are allowlisted in your firewall:
+- `api.anthropic.com` — Claude API endpoints
+- `claude.ai` — Authentication for claude.ai accounts
+- `platform.claude.com` — Authentication for Console accounts
+
+### 64.6 LiteLLM for Cost Tracking
+
+Open-source tool for centralized spend tracking by API key:
+
+```bash
+# Install LiteLLM proxy
+pip install litellm[proxy]
+
+# Start proxy
+litellm --model claude-sonnet-4-6
+
+# Point Claude Code to LiteLLM
+export ANTHROPIC_BASE_URL='http://localhost:4000'
+```
+
+---
+
+## 65. Data Privacy & Compliance
+
+### 65.1 Data Training Policy
+
+| Account Type | Training on Your Data? |
+|---|---|
+| **Free, Pro, Max** | User choice (toggle in settings) |
+| **Team, Enterprise, API** | Never (unless opted into Developer Partner Program) |
+| **Bedrock, Vertex, Foundry** | Never |
+
+### 65.2 Data Retention
+
+| Account Type | Retention |
+|---|---|
+| **Consumer (training on)** | 5 years |
+| **Consumer (training off)** | 30 days |
+| **Commercial (Team/Enterprise/API)** | 30 days |
+| **Zero Data Retention** | Available for Enterprise |
+
+### 65.3 Telemetry Controls
+
+```bash
+# Disable all non-essential traffic at once
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+
+# Or disable individually:
+export DISABLE_TELEMETRY=1              # Statsig metrics
+export DISABLE_ERROR_REPORTING=1         # Sentry errors
+export DISABLE_BUG_COMMAND=1             # /bug reports
+export CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1  # Session surveys
+```
+
+Third-party providers (Bedrock, Vertex, Foundry) disable all non-essential traffic by default.
+
+### 65.4 What Data Flows Where
+
+**Local sessions**: Prompts and outputs sent to Anthropic API (encrypted via TLS). Code stays on your machine. Session transcripts stored locally.
+
+**Remote/Web sessions**: Repository cloned to isolated VM. GitHub credentials handled via secure proxy (never enter sandbox). All traffic through security proxy.
+
+**Remote Control**: All execution on your machine. Web/mobile interface is just a window into the local session.
+
+### 65.5 Privacy Settings
+
+Change at: [claude.ai/settings/data-privacy-controls](https://claude.ai/settings/data-privacy-controls)
+
+### 65.6 Zero Data Retention (Enterprise)
+
+- Enabled per-organization by your account team
+- No prompts, outputs, or code retained after processing
+- Available for Claude for Enterprise plans
+
+---
+
+## 66. Deployment Comparison Guide
+
+### 66.1 Which Deployment Is Right for You?
+
+| Deployment | Best For | Billing | Auth |
+|---|---|---|---|
+| **Claude for Teams** | Small-medium teams, quick start | $150/seat (Premium) | Claude.ai SSO |
+| **Claude for Enterprise** | Large orgs, compliance needs | Contact Sales | SSO + domain capture |
+| **Anthropic Console** | Individual developers, API | Pay-as-you-go | API key |
+| **Amazon Bedrock** | AWS-native, data residency | PAYG through AWS | AWS IAM |
+| **Google Vertex AI** | GCP-native deployments | PAYG through GCP | GCP credentials |
+| **Microsoft Foundry** | Azure-native deployments | PAYG through Azure | Entra ID or API key |
+
+### 66.2 Feature Comparison
+
+| Feature | Teams/Enterprise | Console | Bedrock | Vertex | Foundry |
+|---|---|---|---|---|---|
+| Claude on web included | Yes | No | No | No | No |
+| Prompt caching | Yes | Yes | Yes | Yes | Yes |
+| Cost tracking | Usage dashboard | Usage dashboard | AWS Cost Explorer | GCP Billing | Azure Cost Mgmt |
+| Enterprise features | Team mgmt, SSO | None | IAM, CloudTrail | IAM, Audit Logs | RBAC, Monitor |
+
+### 66.3 Quick Setup by Provider
+
+**Bedrock:**
+```bash
+export CLAUDE_CODE_USE_BEDROCK=1
+export AWS_REGION=us-east-1
+export AWS_PROFILE=your-profile
+```
+
+**Vertex AI:**
+```bash
+export CLAUDE_CODE_USE_VERTEX=1
+export CLOUD_ML_REGION=us-east5
+export ANTHROPIC_VERTEX_PROJECT_ID=your-project-id
+```
+
+**Microsoft Foundry:**
+```bash
+export CLAUDE_CODE_USE_FOUNDRY=1
+export ANTHROPIC_FOUNDRY_RESOURCE=your-resource
+export ANTHROPIC_FOUNDRY_API_KEY=your-api-key
+```
+
+### 66.4 Best Practices for Organizations
+
+1. **Invest in CLAUDE.md** — Organization-wide + per-repo documentation
+2. **Create "one-click" install** — Simplify onboarding for developers
+3. **Start guided** — Begin with codebase Q&A and small bug fixes
+4. **Pin model versions** — Prevent breakage on updates (Bedrock/Vertex/Foundry)
+5. **Configure managed settings** — Centralized security policies
+6. **Leverage MCP** — Central team configures, checks `.mcp.json` into repos
+7. **Use plugins** — Standardize team workflows via shared plugins
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
