@@ -55,6 +55,8 @@
 46. [Feature Decision Guide — What to Use When](#46-feature-decision-guide--what-to-use-when)
 47. [Copy-Paste Recipes — Ready-to-Use Configurations](#47-copy-paste-recipes--ready-to-use-configurations)
 48. [Real-World Case Studies](#48-real-world-case-studies)
+49. [Advanced Prompt Engineering for Claude Code](#49-advanced-prompt-engineering-for-claude-code)
+50. [Security Best Practices](#50-security-best-practices)
 
 ---
 
@@ -3817,11 +3819,179 @@ done
 
 ---
 
+## 49. Advanced Prompt Engineering for Claude Code
+
+### 49.1 The Specificity Spectrum
+
+| Vague (Explore) | Specific (Execute) |
+|---|---|
+| "What would you improve in this file?" | "Add input validation to the login function in auth.ts" |
+| "How does this work?" | "Trace the login process from front-end to database" |
+| "Fix the bug" | "Users report login fails after session timeout. Check src/auth/, especially token refresh. Write a failing test, then fix it." |
+
+Use vague prompts for exploration, specific prompts for execution.
+
+### 49.2 The Interview Pattern
+
+```
+I want to build [brief description]. Interview me in detail using
+the AskUserQuestion tool.
+
+Ask about:
+- Technical implementation details
+- UI/UX decisions
+- Edge cases and error handling
+- Security concerns
+- Performance tradeoffs
+
+Don't ask obvious questions — dig into the hard parts I might not
+have considered. Keep interviewing until we've covered everything,
+then write a complete spec to SPEC.md.
+```
+
+Then start a fresh session to execute the spec (clean context).
+
+### 49.3 The Verification Pattern
+
+Always give Claude a way to check its own work:
+
+```
+# With tests
+"Write validateEmail. Test cases: user@example.com → true,
+invalid → false, user@.com → false. Run tests after implementing."
+
+# With screenshots
+"[paste screenshot] Implement this design. Take a screenshot of
+the result and compare. List differences and fix them."
+
+# With linting
+"Refactor utils.js to ES2024. Run eslint and fix any issues."
+
+# With type checking
+"Add TypeScript types to the API module. Run tsc and fix all errors."
+```
+
+### 49.4 The Scoping Pattern
+
+```
+# Bad — infinite exploration
+"Investigate the codebase"
+
+# Good — scoped investigation
+"Look at src/auth/ and explain how token refresh works.
+Don't read other directories."
+
+# Better — scoped with sub-agent
+"Use a sub-agent to investigate how token refresh works in src/auth/.
+Report back only the key findings."
+```
+
+### 49.5 The Correction Pattern
+
+After 2 failed corrections:
+1. `/clear` to reset context
+2. Write a better prompt incorporating what you learned
+3. Include the specific constraint Claude kept violating
+
+```
+# Instead of correcting again:
+"I said don't use mocks!"
+
+# Start fresh with explicit constraints:
+"Write tests for the user service. Requirements:
+- NO mocks — use real database with test fixtures
+- Use the existing test helper in tests/helpers/db.ts
+- Follow the pattern in tests/auth.test.ts
+- Run tests after writing them"
+```
+
+### 49.6 The Context-Efficient Pattern
+
+```
+# Bad — Claude reads everything
+"Review the entire codebase for security issues"
+
+# Good — targeted with sub-agents
+"Use sub-agents to review these areas in parallel:
+1. src/auth/ for authentication vulnerabilities
+2. src/api/ for injection risks
+3. src/middleware/ for authorization bypasses
+Report findings only."
+```
+
+### 49.7 Trigger Words
+
+| Word | Effect |
+|------|--------|
+| `ultrathink` | Enables deep extended thinking for one turn |
+| `plan` | Encourages Claude to plan before acting |
+| `verify` | Encourages Claude to check its work |
+| `step by step` | More methodical approach |
+| `don't` / `never` | Strong constraints (use sparingly) |
+
+---
+
+## 50. Security Best Practices
+
+### 50.1 Defense in Depth Layers
+
+```
+Layer 1: Permissions     → Control which tools Claude can use
+Layer 2: Sandboxing      → OS-level filesystem/network isolation
+Layer 3: Hooks           → Runtime validation before tool execution
+Layer 4: CLAUDE.md       → Advisory rules (not enforced)
+Layer 5: Code Review     → Automated review of Claude's changes
+Layer 6: Git             → Version control as safety net
+```
+
+### 50.2 Minimum Security Setup
+
+```json
+// .claude/settings.json
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Edit(~/.ssh/**)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)"
+    ]
+  },
+  "sandbox": { "enabled": true }
+}
+```
+
+### 50.3 Prompt Injection Protection
+
+- **Sandboxing** prevents exfiltration even if Claude is manipulated
+- **Network isolation** blocks unauthorized outbound connections
+- **File restrictions** prevent modification of system files
+- **Hook validation** catches dangerous commands before execution
+
+### 50.4 Secret Management
+
+- Never put secrets in CLAUDE.md or skills
+- Use environment variables for API keys
+- Use `.env` files (gitignored) for local secrets
+- For CI/CD, use GitHub Secrets or GitLab CI/CD Variables
+- MCP OAuth tokens are stored securely and refreshed automatically
+
+### 50.5 Audit Trail
+
+- All Claude actions are logged in session transcripts
+- `~/.claude/projects/{project}/{sessionId}/` contains full history
+- Git commits provide permanent record of all changes
+- Hooks can log to external systems (Slack, Sentry, etc.)
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
