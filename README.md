@@ -4,7 +4,7 @@ The most comprehensive guide to Claude Code (OpenCLAW): installation, deployment
 
 See [TUTORIAL.md](TUTORIAL.md) for the full tutorial.
 
-## 50 Chapters | 4,022 Lines | Continuously Updated
+## 53 Chapters | 4,215 Lines | Continuously Updated
 
 ## What You'll Learn
 
