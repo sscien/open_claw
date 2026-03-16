@@ -1,0 +1,1541 @@
+# OpenCLAW: The Advanced Claude Code Tutorial
+
+> The most comprehensive guide to Claude Code — from zero to production, including 12+ monetization scenarios.
+> Updated: March 2026 | Claude Code v2.1.x | Models: Opus 4.6, Sonnet 4.6, Haiku 4.5
+
+---
+
+## Table of Contents
+
+1. [What Is Claude Code?](#1-what-is-claude-code)
+2. [Installation & Setup](#2-installation--setup)
+3. [Authentication & Accounts](#3-authentication--accounts)
+4. [Core Concepts & Workflows](#4-core-concepts--workflows)
+5. [CLAUDE.md — Persistent Instructions](#5-claudemd--persistent-instructions)
+6. [Skills — Reusable AI Workflows](#6-skills--reusable-ai-workflows)
+7. [Hooks — Deterministic Automation](#7-hooks--deterministic-automation)
+8. [MCP Servers — External Tool Integration](#8-mcp-servers--external-tool-integration)
+9. [Sub-Agents — Specialized AI Workers](#9-sub-agents--specialized-ai-workers)
+10. [Plugins — Package & Distribute](#10-plugins--package--distribute)
+11. [GitHub Actions & CI/CD](#11-github-actions--cicd)
+12. [Agent SDK — Programmatic Control](#12-agent-sdk--programmatic-control)
+13. [Advanced Patterns](#13-advanced-patterns)
+14. [Monetization Scenarios](#14-monetization-scenarios--making-money-with-claude-code)
+15. [Best Practices Cheat Sheet](#15-best-practices-cheat-sheet)
+
+---
+
+## 1. What Is Claude Code?
+
+Claude Code is Anthropic's agentic coding tool. Unlike a chatbot, it **reads your codebase, edits files, runs commands, and autonomously works through problems**. It's available in:
+
+| Surface | Best For |
+|---------|----------|
+| **Terminal CLI** | Full-featured development, scripting, CI/CD |
+| **VS Code / Cursor** | Inline diffs, @-mentions, plan review |
+| **JetBrains** | IntelliJ, PyCharm, WebStorm integration |
+| **Desktop App** | Visual diff review, multiple sessions, scheduling |
+| **Web (claude.ai/code)** | No local setup, long-running tasks, mobile |
+| **Slack** | Route bug reports → pull requests |
+| **Chrome Extension** | Debug live web applications |
+
+**Key capabilities:**
+- Explore and understand entire codebases
+- Build features across multiple files
+- Fix bugs by tracing through code
+- Create commits, branches, and pull requests
+- Connect to external tools via MCP (Jira, Slack, databases, etc.)
+- Spawn sub-agent teams for parallel work
+- Run in CI/CD for automated code review
+
+---
+
+## 2. Installation & Setup
+
+### 2.1 System Requirements
+
+- **macOS** 13.0+ | **Windows** 10 1809+ | **Ubuntu** 20.04+ | **Debian** 10+ | **Alpine** 3.19+
+- 4 GB+ RAM
+- Internet connection
+- Shell: Bash, Zsh, PowerShell, or CMD
+
+### 2.2 Installation Methods
+
+**Method 1: Native Install (Recommended — auto-updates)**
+
+```bash
+# macOS / Linux / WSL
+curl -fsSL https://claude.ai/install.sh | bash
+
+# Windows PowerShell
+irm https://claude.ai/install.ps1 | iex
+
+# Windows CMD
+curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
+
+**Method 2: Homebrew (macOS/Linux — manual updates)**
+
+```bash
+brew install --cask claude-code
+# Update: brew upgrade claude-code
+```
+
+**Method 3: WinGet (Windows — manual updates)**
+
+```powershell
+winget install Anthropic.ClaudeCode
+# Update: winget upgrade Anthropic.ClaudeCode
+```
+
+**Method 4: npm (Deprecated — use native install)**
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+### 2.3 Verify Installation
+
+```bash
+claude --version
+claude doctor    # Detailed check of installation and configuration
+```
+
+### 2.4 Install a Specific Version or Channel
+
+```bash
+# Stable channel (one week behind latest, skips regressions)
+curl -fsSL https://claude.ai/install.sh | bash -s stable
+
+# Pin a specific version
+curl -fsSL https://claude.ai/install.sh | bash -s 1.0.58
+```
+
+Configure in `settings.json`:
+```json
+{ "autoUpdatesChannel": "stable" }
+```
+
+### 2.5 Windows-Specific Setup
+
+- **Option A**: Install [Git for Windows](https://git-scm.com/downloads/win), then run the native installer from PowerShell/CMD.
+- **Option B**: Use WSL (WSL 2 supports sandboxing for enhanced security).
+
+If Claude can't find Git Bash:
+```json
+{
+  "env": {
+    "CLAUDE_CODE_GIT_BASH_PATH": "C:\\Program Files\\Git\\bin\\bash.exe"
+  }
+}
+```
+
+---
+
+## 3. Authentication & Accounts
+
+Claude Code requires a **Pro, Max, Teams, Enterprise, or Console** account. The free Claude.ai plan does not include access.
+
+```bash
+# Start Claude and follow browser prompts to log in
+claude
+```
+
+**Third-party providers** are also supported:
+- Amazon Bedrock
+- Google Vertex AI
+- Microsoft Foundry
+
+---
+
+## 4. Core Concepts & Workflows
+
+### 4.1 The Agentic Loop
+
+Claude Code isn't a chatbot — it's an **agent**. When you give it a task, it:
+
+1. **Reads** relevant files to understand context
+2. **Plans** an approach (optionally in Plan Mode)
+3. **Implements** changes across multiple files
+4. **Verifies** by running tests, linters, or commands
+5. **Iterates** until the task is complete
+
+### 4.2 Plan Mode — Explore Before You Code
+
+Separate research from implementation to avoid solving the wrong problem.
+
+```
+Ctrl+Shift+P  →  Toggle Plan Mode (read-only exploration)
+```
+
+**Recommended 4-phase workflow:**
+
+| Phase | Mode | Example Prompt |
+|-------|------|----------------|
+| **Explore** | Plan Mode | `read src/auth/ and understand how sessions work` |
+| **Plan** | Plan Mode | `I want to add Google OAuth. Create a plan.` |
+| **Implement** | Normal Mode | `implement the OAuth flow from your plan` |
+| **Commit** | Normal Mode | `commit with a descriptive message and open a PR` |
+
+Press `Ctrl+G` to open the plan in your text editor for direct editing.
+
+### 4.3 Verification — The #1 Best Practice
+
+> **Give Claude a way to verify its work.** This is the single highest-leverage thing you can do.
+
+```
+# Bad
+"implement email validation"
+
+# Good
+"write a validateEmail function. Test cases: user@example.com → true,
+invalid → false, user@.com → false. Run the tests after implementing."
+```
+
+### 4.4 Context Management
+
+Claude's context window is your most important resource. It fills fast.
+
+| Command | What It Does |
+|---------|-------------|
+| `/clear` | Reset context between unrelated tasks |
+| `/compact` | Summarize conversation to free space |
+| `/compact Focus on API changes` | Targeted compaction |
+| `Esc` | Stop Claude mid-action (context preserved) |
+| `Esc + Esc` or `/rewind` | Restore to any previous checkpoint |
+| `/btw` | Quick question that doesn't enter history |
+
+**Rules of thumb:**
+- `/clear` between unrelated tasks
+- After 2 failed corrections → `/clear` and write a better prompt
+- Use sub-agents for investigation (keeps main context clean)
+- Track context usage with a custom status line
+
+### 4.5 Session Management
+
+```bash
+claude --continue       # Resume most recent conversation
+claude --resume         # Select from recent sessions
+/rename oauth-migration # Name sessions for easy retrieval
+```
+
+### 4.6 Providing Rich Context
+
+- **`@filename`** — Reference files directly (Claude reads them)
+- **Paste images** — Copy/paste or drag-and-drop screenshots
+- **Give URLs** — Documentation and API references
+- **Pipe data** — `cat error.log | claude`
+- **Let Claude fetch** — "Use `gh issue view 123` to get the details"
+
+---
+
+## 5. CLAUDE.md — Persistent Instructions
+
+CLAUDE.md is a markdown file Claude reads at the start of **every** conversation. It gives Claude persistent context it can't infer from code alone.
+
+### 5.1 Generate a Starter File
+
+```bash
+claude
+# Then inside Claude Code:
+/init
+```
+
+This analyzes your codebase and generates a CLAUDE.md with detected build systems, test frameworks, and code patterns.
+
+### 5.2 What to Include vs. Exclude
+
+| ✅ Include | ❌ Exclude |
+|-----------|-----------|
+| Bash commands Claude can't guess | Anything Claude can figure out from code |
+| Code style rules that differ from defaults | Standard language conventions |
+| Testing instructions and preferred runners | Detailed API docs (link instead) |
+| Branch naming, PR conventions | Information that changes frequently |
+| Architectural decisions | File-by-file codebase descriptions |
+| Required env vars, dev quirks | Self-evident practices |
+
+### 5.3 Example CLAUDE.md
+
+```markdown
+# Code style
+- Use ES modules (import/export), not CommonJS (require)
+- Destructure imports when possible
+
+# Workflow
+- Typecheck after making code changes: `npm run typecheck`
+- Run single tests, not the whole suite: `npm test -- --grep "test name"`
+- Branch naming: feature/TICKET-description
+
+# Architecture
+- API routes in src/routes/, business logic in src/services/
+- All DB access through src/db/repository.ts (never raw SQL in routes)
+```
+
+### 5.4 File Locations & Hierarchy
+
+| Location | Scope |
+|----------|-------|
+| `~/.claude/CLAUDE.md` | All sessions (personal) |
+| `./CLAUDE.md` | Project root (shared via git) |
+| `./subdir/CLAUDE.md` | Loaded on-demand when working in subdir |
+| Parent directories | Auto-loaded (great for monorepos) |
+
+Import other files with `@path/to/file`:
+```markdown
+See @README.md for project overview.
+Git workflow: @docs/git-instructions.md
+```
+
+### 5.5 Auto Memory
+
+Claude also builds **auto memory** as it works — saving learnings like build commands and debugging insights across sessions without you writing anything. This is stored in `~/.claude/projects/<project>/memory/`.
+
+---
+
+## 6. Skills — Reusable AI Workflows
+
+Skills extend what Claude can do. Create a `SKILL.md` file with instructions, and Claude adds it to its toolkit. Claude uses skills when relevant, or you can invoke one directly with `/skill-name`.
+
+### 6.1 Create Your First Skill
+
+```bash
+mkdir -p ~/.claude/skills/explain-code
+```
+
+Create `~/.claude/skills/explain-code/SKILL.md`:
+
+```yaml
+---
+name: explain-code
+description: Explains code with visual diagrams and analogies. Use when the user asks "how does this work?"
+---
+
+When explaining code, always include:
+1. **Analogy**: Compare the code to something from everyday life
+2. **Diagram**: Use ASCII art to show flow/structure
+3. **Walkthrough**: Step-by-step what happens
+4. **Gotcha**: Common mistake or misconception
+```
+
+Test it: `/explain-code src/auth/login.ts`
+
+### 6.2 Skill Locations & Scope
+
+| Location | Scope |
+|----------|-------|
+| `~/.claude/skills/<name>/SKILL.md` | All your projects (personal) |
+| `.claude/skills/<name>/SKILL.md` | This project only (shared via git) |
+| Plugin's `skills/` directory | Where plugin is enabled |
+| Enterprise managed settings | All users in organization |
+
+### 6.3 Skill Directory Structure
+
+```
+my-skill/
+├── SKILL.md           # Main instructions (required)
+├── template.md        # Template for Claude to fill in
+├── examples/
+│   └── sample.md      # Example output
+└── scripts/
+    └── validate.sh    # Script Claude can execute
+```
+
+### 6.4 Frontmatter Reference
+
+```yaml
+---
+name: deploy                        # Slash command name
+description: Deploy to production   # When Claude should use it
+disable-model-invocation: true      # Only manual /deploy (not auto)
+user-invocable: false               # Only Claude can invoke (background knowledge)
+allowed-tools: Read, Grep, Glob     # Restrict tool access
+model: sonnet                       # Model override
+context: fork                       # Run in isolated sub-agent
+agent: Explore                      # Which sub-agent type
+---
+```
+
+### 6.5 String Substitutions
+
+| Variable | Description |
+|----------|-------------|
+| `$ARGUMENTS` | All arguments passed to the skill |
+| `$ARGUMENTS[0]`, `$0` | First argument |
+| `${CLAUDE_SESSION_ID}` | Current session ID |
+| `${CLAUDE_SKILL_DIR}` | Directory containing SKILL.md |
+
+### 6.6 Dynamic Context Injection
+
+Run shell commands before the skill content is sent to Claude:
+
+```yaml
+---
+name: pr-summary
+description: Summarize a pull request
+context: fork
+agent: Explore
+---
+
+## PR Context
+- Diff: !`gh pr diff`
+- Comments: !`gh pr view --comments`
+- Changed files: !`gh pr diff --name-only`
+
+Summarize this pull request.
+```
+
+### 6.7 Bundled Skills (Ship with Claude Code)
+
+| Skill | Purpose |
+|-------|---------|
+| `/batch <instruction>` | Parallel changes across codebase (one agent per unit, each in a worktree) |
+| `/claude-api` | Load Claude API reference for your language |
+| `/debug [description]` | Troubleshoot current session |
+| `/loop [interval] <prompt>` | Run a prompt repeatedly on an interval |
+| `/simplify [focus]` | Review changed files for quality, then fix |
+
+### 6.8 Extended Thinking in Skills
+
+Include the word **"ultrathink"** anywhere in your skill content to enable extended thinking mode.
+
+---
+
+## 7. Hooks — Deterministic Automation
+
+Unlike CLAUDE.md instructions (advisory), hooks are **deterministic** — they guarantee the action happens every time.
+
+### 7.1 Hook Types
+
+| Type | How It Works |
+|------|-------------|
+| **Command** (`type: "command"`) | Run shell scripts, receive JSON on stdin |
+| **HTTP** (`type: "http"`) | Send JSON POST to endpoints |
+| **Prompt** (`type: "prompt"`) | Send to Claude model for single-turn evaluation |
+| **Agent** (`type: "agent"`) | Spawn a sub-agent with tool access to verify conditions |
+
+### 7.2 Hook Events
+
+| Event | When It Fires | Use Case |
+|-------|--------------|----------|
+| `PreToolUse` | Before a tool executes | Block dangerous commands, auto-approve safe ones |
+| `PostToolUse` | After successful tool execution | Run linter after file edits |
+| `Stop` | When Claude finishes responding | Force continuation if tasks incomplete |
+| `PostToolUseFailure` | When a tool fails | Provide context about errors |
+| `PermissionRequest` | When permission dialog appears | Auto-approve/deny on behalf of user |
+| `SessionStart` | When session starts | Run setup scripts |
+| `SubagentStart/Stop` | When sub-agents start/finish | Setup/cleanup for sub-agent tasks |
+
+### 7.3 Configuration
+
+Hooks live in settings JSON files:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/validate.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Settings file locations:**
+- `~/.claude/settings.json` — All projects (personal)
+- `.claude/settings.json` — This project (shareable)
+- `.claude/settings.local.json` — This project (local only)
+
+### 7.4 Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success — process JSON output for decisions |
+| `2` | Blocking error — action is prevented, stderr fed to Claude |
+| Other | Non-blocking error — execution continues |
+
+### 7.5 Practical Examples
+
+**Block destructive commands:**
+
+```bash
+#!/bin/bash
+# .claude/hooks/block-destructive.sh
+COMMAND=$(jq -r '.tool_input.command')
+if echo "$COMMAND" | grep -q 'rm -rf'; then
+  jq -n '{
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: "Destructive command blocked"
+    }
+  }'
+else
+  exit 0
+fi
+```
+
+**Auto-format after every file edit:**
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$CLAUDE_PROJECT_DIR/src/**/*.ts\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Agent-based verification before stopping:**
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Verify all tests pass before stopping.",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 7.6 Let Claude Write Hooks for You
+
+```
+"Write a hook that runs eslint after every file edit"
+"Write a hook that blocks writes to the migrations folder"
+```
+
+Browse configured hooks: `/hooks`
+
+---
+
+## 8. MCP Servers — External Tool Integration
+
+The [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) is an open standard for connecting AI tools to external data sources. With MCP, Claude Code can read design docs, update Jira tickets, query databases, pull Slack messages, and more.
+
+### 8.1 Adding MCP Servers
+
+**Remote HTTP server (recommended):**
+```bash
+claude mcp add --transport http notion https://mcp.notion.com/mcp
+```
+
+**Remote SSE server (deprecated — use HTTP):**
+```bash
+claude mcp add --transport sse asana https://mcp.asana.com/sse
+```
+
+**Local stdio server:**
+```bash
+claude mcp add --transport stdio --env AIRTABLE_API_KEY=YOUR_KEY airtable \
+  -- npx -y airtable-mcp-server
+```
+
+**From JSON configuration:**
+```bash
+claude mcp add-json weather-api '{"type":"http","url":"https://api.weather.com/mcp"}'
+```
+
+**Import from Claude Desktop:**
+```bash
+claude mcp add-from-claude-desktop
+```
+
+### 8.2 Managing Servers
+
+```bash
+claude mcp list              # List all configured servers
+claude mcp get github        # Get details for a server
+claude mcp remove github     # Remove a server
+/mcp                         # Check status inside Claude Code
+```
+
+### 8.3 Scopes
+
+| Scope | Storage | Use Case |
+|-------|---------|----------|
+| **Local** (default) | `~/.claude.json` | Personal, this project only |
+| **Project** | `.mcp.json` (git-tracked) | Team-shared |
+| **User** | `~/.claude.json` | Personal, all projects |
+
+```bash
+claude mcp add --transport http stripe --scope project https://mcp.stripe.com
+```
+
+### 8.4 OAuth Authentication
+
+Many cloud MCP servers require OAuth:
+```bash
+claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
+# Then inside Claude Code:
+/mcp   # Follow browser login flow
+```
+
+### 8.5 Popular MCP Servers
+
+| Server | What It Does |
+|--------|-------------|
+| **GitHub** | PRs, issues, code review |
+| **Notion** | Read/write pages and databases |
+| **Sentry** | Error monitoring and debugging |
+| **Slack** | Read messages, post updates |
+| **PostgreSQL** | Query databases naturally |
+| **Figma** | Read designs, extract specs |
+| **Jira** | Issue tracking, sprint management |
+| **Google Drive** | Read docs, sheets, slides |
+| **Playwright** | Browser testing and screenshots |
+
+### 8.6 Example Workflows
+
+```
+# After connecting Sentry:
+"What are the most common errors in the last 24 hours?"
+
+# After connecting GitHub:
+"Review PR #456 and suggest improvements"
+
+# After connecting PostgreSQL:
+"What's our total revenue this month?"
+```
+
+### 8.7 Use Claude Code AS an MCP Server
+
+Other applications can connect to Claude Code:
+```bash
+claude mcp serve
+```
+
+Add to Claude Desktop's config:
+```json
+{
+  "mcpServers": {
+    "claude-code": {
+      "type": "stdio",
+      "command": "claude",
+      "args": ["mcp", "serve"]
+    }
+  }
+}
+```
+
+### 8.8 MCP Tool Search (Scaling)
+
+When you have many MCP servers, tool definitions can overwhelm context. Claude Code auto-enables **Tool Search** when MCP tools exceed 10% of context — tools are loaded on-demand instead of upfront.
+
+```bash
+# Custom threshold
+ENABLE_TOOL_SEARCH=auto:5 claude
+
+# Disable entirely
+ENABLE_TOOL_SEARCH=false claude
+```
+
+---
+
+## 9. Sub-Agents — Specialized AI Workers
+
+Sub-agents are specialized AI assistants that run in their own context window with custom system prompts, specific tool access, and independent permissions. They keep exploration out of your main conversation.
+
+### 9.1 Built-in Sub-Agents
+
+| Agent | Model | Tools | Purpose |
+|-------|-------|-------|---------|
+| **Explore** | Haiku (fast) | Read-only | File discovery, code search |
+| **Plan** | Inherits | Read-only | Codebase research for planning |
+| **General-purpose** | Inherits | All | Complex multi-step tasks |
+
+### 9.2 Create a Custom Sub-Agent
+
+**Interactive method:**
+```
+/agents → Create new agent → User-level → Generate with Claude
+```
+
+**Manual method** — create `~/.claude/agents/code-reviewer.md`:
+
+```yaml
+---
+name: code-reviewer
+description: Reviews code for quality and best practices. Use proactively after code changes.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+
+You are a senior code reviewer. When invoked:
+1. Run git diff to see recent changes
+2. Focus on modified files
+3. Review for: clarity, duplication, error handling, security, test coverage, performance
+
+Provide feedback by priority:
+- **Critical** (must fix)
+- **Warnings** (should fix)
+- **Suggestions** (consider improving)
+
+Include specific examples of how to fix issues.
+```
+
+### 9.3 Sub-Agent Locations
+
+| Location | Scope | Priority |
+|----------|-------|----------|
+| `--agents` CLI flag | Current session | 1 (highest) |
+| `.claude/agents/` | Current project | 2 |
+| `~/.claude/agents/` | All projects | 3 |
+| Plugin's `agents/` | Where plugin enabled | 4 (lowest) |
+
+### 9.4 CLI-Defined Sub-Agents (Ephemeral)
+
+```bash
+claude --agents '{
+  "code-reviewer": {
+    "description": "Expert code reviewer",
+    "prompt": "You are a senior code reviewer. Focus on quality and security.",
+    "tools": ["Read", "Grep", "Glob", "Bash"],
+    "model": "sonnet"
+  },
+  "debugger": {
+    "description": "Debugging specialist",
+    "prompt": "You are an expert debugger. Analyze errors and provide fixes."
+  }
+}'
+```
+
+### 9.5 Advanced Configuration
+
+**Persistent memory** — sub-agents that learn across sessions:
+```yaml
+---
+name: code-reviewer
+description: Reviews code for quality
+memory: user    # user | project | local
+---
+```
+
+**Scoped MCP servers** — give sub-agents tools the main conversation doesn't have:
+```yaml
+---
+name: browser-tester
+description: Tests features using Playwright
+mcpServers:
+  - playwright:
+      type: stdio
+      command: npx
+      args: ["-y", "@playwright/mcp@latest"]
+  - github    # Reference existing server
+---
+```
+
+**Git worktree isolation:**
+```yaml
+---
+name: feature-worker
+description: Implements features in isolation
+isolation: worktree    # Gets its own copy of the repo
+---
+```
+
+**Permission modes:**
+
+| Mode | Behavior |
+|------|----------|
+| `default` | Standard permission checking |
+| `acceptEdits` | Auto-accept file edits |
+| `dontAsk` | Auto-deny prompts (allowed tools still work) |
+| `bypassPermissions` | Skip all checks (use with caution) |
+| `plan` | Read-only exploration |
+
+### 9.6 Usage Patterns
+
+```
+# Explicit delegation
+"Use the code-reviewer sub-agent to review my recent changes"
+
+# Parallel research
+"Research auth, database, and API modules in parallel using separate sub-agents"
+
+# Chain sub-agents
+"Use code-reviewer to find issues, then use debugger to fix them"
+
+# Background execution
+"Run this in the background"    # or press Ctrl+B
+```
+
+### 9.7 When to Use Sub-Agents vs. Main Conversation
+
+| Use Main Conversation | Use Sub-Agents |
+|----------------------|----------------|
+| Frequent back-and-forth | Verbose output you don't need in context |
+| Multiple phases sharing context | Enforce specific tool restrictions |
+| Quick targeted changes | Self-contained work returning a summary |
+| Latency matters | Parallel independent investigations |
+
+---
+
+## 10. Plugins — Package & Distribute
+
+Plugins bundle skills, hooks, sub-agents, and MCP servers into a single installable unit. Browse the marketplace with `/plugin`.
+
+### 10.1 Plugin Structure
+
+```
+my-plugin/
+├── plugin.json          # Plugin manifest
+├── skills/
+│   └── my-skill/
+│       └── SKILL.md
+├── agents/
+│   └── my-agent.md
+├── hooks/
+│   └── hooks.json
+├── .mcp.json            # MCP server definitions
+└── README.md
+```
+
+### 10.2 plugin.json Manifest
+
+```json
+{
+  "name": "my-plugin",
+  "description": "What this plugin does",
+  "version": "1.0.0",
+  "mcpServers": {
+    "plugin-api": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/servers/api-server",
+      "args": ["--port", "8080"]
+    }
+  }
+}
+```
+
+### 10.3 Plugin MCP Servers
+
+Plugins can bundle MCP servers that start automatically when the plugin is enabled:
+
+```json
+{
+  "database-tools": {
+    "command": "${CLAUDE_PLUGIN_ROOT}/servers/db-server",
+    "args": ["--config", "${CLAUDE_PLUGIN_ROOT}/config.json"],
+    "env": { "DB_URL": "${DB_URL}" }
+  }
+}
+```
+
+### 10.4 Code Intelligence Plugins
+
+If you work with typed languages, install a code intelligence plugin for precise symbol navigation and automatic error detection after edits.
+
+---
+
+## 11. GitHub Actions & CI/CD
+
+Claude Code GitHub Actions brings AI-powered automation to your GitHub workflow. Mention `@claude` in any PR or issue, and Claude analyzes code, creates PRs, implements features, and fixes bugs.
+
+### 11.1 Quick Setup
+
+```bash
+# Inside Claude Code:
+/install-github-app
+```
+
+This guides you through installing the GitHub app and setting up secrets. You must be a repo admin.
+
+### 11.2 Manual Setup
+
+1. Install the Claude GitHub app: [github.com/apps/claude](https://github.com/apps/claude)
+2. Add `ANTHROPIC_API_KEY` to repository secrets
+3. Copy the workflow file into `.github/workflows/`
+
+### 11.3 Basic Workflow
+
+```yaml
+# .github/workflows/claude.yml
+name: Claude Code
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Responds to @claude mentions in comments
+```
+
+### 11.4 Automated Code Review on Every PR
+
+```yaml
+name: Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: "Review this PR for code quality, correctness, and security."
+          claude_args: "--max-turns 5"
+```
+
+### 11.5 Scheduled Automation
+
+```yaml
+name: Daily Report
+on:
+  schedule:
+    - cron: "0 9 * * *"
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: "Generate a summary of yesterday's commits and open issues"
+          claude_args: "--model claude-opus-4-6"
+```
+
+### 11.6 Using with AWS Bedrock / Google Vertex AI
+
+For enterprise environments, use your own cloud infrastructure:
+
+```yaml
+# AWS Bedrock example
+- uses: anthropics/claude-code-action@v1
+  with:
+    github_token: ${{ steps.app-token.outputs.token }}
+    use_bedrock: "true"
+    claude_args: '--model us.anthropic.claude-sonnet-4-6 --max-turns 10'
+```
+
+### 11.7 Common @claude Commands in PRs/Issues
+
+```
+@claude implement this feature based on the issue description
+@claude fix the TypeError in the user dashboard component
+@claude how should I implement user authentication for this endpoint?
+```
+
+---
+
+## 12. Agent SDK — Programmatic Control
+
+The Agent SDK gives you the same tools, agent loop, and context management that power Claude Code — available as a CLI, Python package, or TypeScript package.
+
+### 12.1 CLI Usage (Non-Interactive Mode)
+
+```bash
+# One-off query
+claude -p "Explain what this project does"
+
+# Structured JSON output
+claude -p "List all API endpoints" --output-format json
+
+# Streaming for real-time processing
+claude -p "Analyze this log file" --output-format stream-json
+
+# Auto-approve specific tools
+claude -p "Run tests and fix failures" --allowedTools "Bash,Read,Edit"
+
+# Custom system prompt
+gh pr diff "$1" | claude -p \
+  --append-system-prompt "You are a security engineer. Review for vulnerabilities." \
+  --output-format json
+```
+
+### 12.2 Structured Output with JSON Schema
+
+```bash
+claude -p "Extract function names from auth.py" \
+  --output-format json \
+  --json-schema '{"type":"object","properties":{"functions":{"type":"array","items":{"type":"string"}}},"required":["functions"]}'
+```
+
+### 12.3 Continuing Conversations
+
+```bash
+# First request
+claude -p "Review this codebase for performance issues"
+
+# Continue the same conversation
+claude -p "Now focus on database queries" --continue
+
+# Resume a specific session
+session_id=$(claude -p "Start a review" --output-format json | jq -r '.session_id')
+claude -p "Continue that review" --resume "$session_id"
+```
+
+### 12.4 Fan-Out Pattern (Parallel Processing)
+
+```bash
+# Generate a task list
+claude -p "List all Python files needing migration" > files.txt
+
+# Process each file in parallel
+for file in $(cat files.txt); do
+  claude -p "Migrate $file from React to Vue. Return OK or FAIL." \
+    --allowedTools "Edit,Bash(git commit *)" &
+done
+wait
+```
+
+### 12.5 Pipeline Integration
+
+```bash
+# Pipe into other tools
+claude -p "List security issues" --output-format json | jq '.result'
+
+# Pipe data into Claude
+cat error.log | claude -p "Summarize the errors and suggest fixes"
+git diff main --name-only | claude -p "Review these changed files for security issues"
+
+# Monitor logs
+tail -f app.log | claude -p "Slack me if you see any anomalies"
+```
+
+### 12.6 Python & TypeScript SDKs
+
+For full programmatic control with structured outputs, tool approval callbacks, and native message objects, see the [Agent SDK documentation](https://platform.claude.com/docs/en/agent-sdk/overview).
+
+---
+
+## 13. Advanced Patterns
+
+### 13.1 Writer/Reviewer Pattern
+
+Run two sessions — one writes code, the other reviews it with fresh context:
+
+| Session A (Writer) | Session B (Reviewer) |
+|---|---|
+| `Implement a rate limiter for our API` | |
+| | `Review the rate limiter in @src/middleware/rateLimiter.ts. Look for edge cases and race conditions.` |
+| `Address this review feedback: [paste]` | |
+
+### 13.2 Test-First Pattern
+
+Have one Claude write tests, then another write code to pass them:
+
+```bash
+# Session 1: Write tests
+claude -p "Write comprehensive tests for a URL shortener service"
+
+# Session 2: Implement to pass tests
+claude -p "Implement the URL shortener to pass all tests in tests/shortener.test.ts"
+```
+
+### 13.3 Interview-Driven Development
+
+For larger features, have Claude interview you first:
+
+```
+I want to build [brief description]. Interview me in detail using the
+AskUserQuestion tool.
+
+Ask about technical implementation, UI/UX, edge cases, concerns, and
+tradeoffs. Don't ask obvious questions — dig into the hard parts.
+
+Keep interviewing until we've covered everything, then write a complete
+spec to SPEC.md.
+```
+
+Then start a fresh session to execute the spec.
+
+### 13.4 The /batch Skill — Massive Parallel Changes
+
+```
+/batch migrate all React class components in src/ to functional components with hooks
+```
+
+This skill:
+1. Researches the codebase
+2. Decomposes work into 5-30 independent units
+3. Presents a plan for approval
+4. Spawns one background agent per unit (each in an isolated git worktree)
+5. Each agent implements, tests, and opens a PR
+
+### 13.5 Remote Control & Cross-Device Workflows
+
+- **Remote Control**: Step away from your desk, continue from your phone
+- **Web → Terminal**: Start a task on claude.ai/code, pull it into terminal with `/teleport`
+- **Terminal → Desktop**: Hand off with `/desktop` for visual diff review
+- **Slack → PR**: Mention `@Claude` in Slack with a bug report, get a PR back
+
+### 13.6 Git Worktrees for Isolation
+
+Run parallel Claude sessions without conflicts:
+
+```bash
+# Claude creates isolated worktrees automatically when using /batch
+# Or manually:
+git worktree add .claude/worktrees/feature-auth -b feature/auth
+cd .claude/worktrees/feature-auth && claude
+```
+
+### 13.7 Custom Status Line
+
+Track context usage continuously:
+
+```
+/statusline
+```
+
+Configure to show token count, model, session name, and more.
+
+---
+
+## 14. Monetization Scenarios — Making Money with Claude Code
+
+Claude Code isn't just a productivity tool — it's a force multiplier that enables entirely new business models. Here are 12+ proven scenarios for generating revenue.
+
+### Scenario 1: Freelance Development Agency (10x Output)
+
+**The play**: One developer + Claude Code = output of a small team.
+
+```bash
+# Accept a client project, use Claude to implement features rapidly
+claude -p "Implement the user dashboard with charts, filters, and export to CSV.
+Follow the design in @designs/dashboard.png. Write tests for all components."
+```
+
+**Revenue model**: Charge project-based rates. Deliver in days what used to take weeks.
+**Realistic income**: $10K–$50K/month as a solo developer handling 3-5x more clients.
+
+### Scenario 2: Automated Code Review Service
+
+**The play**: Offer AI-powered code review as a service using GitHub Actions.
+
+```yaml
+# .github/workflows/review-service.yml
+name: AI Code Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this PR for:
+            - Security vulnerabilities (OWASP Top 10)
+            - Performance bottlenecks
+            - Code quality and maintainability
+            - Test coverage gaps
+            Provide actionable feedback with code examples.
+          claude_args: "--model claude-opus-4-6 --max-turns 10"
+```
+
+**Revenue model**: SaaS subscription — $49/month per repo (small), $199/month (enterprise).
+**Target market**: Teams without dedicated security reviewers.
+
+### Scenario 3: Legacy Code Migration Service
+
+**The play**: Migrate legacy codebases using the `/batch` skill.
+
+```
+/batch migrate all jQuery code in src/ to modern vanilla JavaScript ES2024
+/batch convert all Python 2 files to Python 3.12 with type hints
+/batch migrate all class components to React hooks with TypeScript
+```
+
+**Revenue model**: Fixed-price migration contracts. $5K–$100K per project depending on codebase size.
+**Why it works**: Migration is tedious, high-value work that most teams avoid. Claude handles the tedium.
+
+### Scenario 4: Custom Plugin & Skill Marketplace
+
+**The play**: Build and sell Claude Code plugins for specific industries.
+
+```
+my-plugin/
+├── plugin.json
+├── skills/
+│   ├── hipaa-compliance/SKILL.md    # Healthcare compliance checks
+│   ├── sox-audit/SKILL.md           # Financial audit automation
+│   └── gdpr-review/SKILL.md        # GDPR compliance review
+├── agents/
+│   └── compliance-reviewer.md
+└── hooks/
+    └── hooks.json                    # Block non-compliant patterns
+```
+
+**Revenue model**: Plugin licenses — $99–$499/month per team.
+**Target market**: Regulated industries (healthcare, finance, government).
+
+### Scenario 5: AI-Powered Documentation Service
+
+**The play**: Generate and maintain documentation automatically.
+
+```bash
+# Generate API docs from code
+claude -p "Analyze all API endpoints in src/routes/ and generate
+comprehensive OpenAPI 3.0 documentation with examples" \
+  --allowedTools "Read,Grep,Glob,Write"
+
+# Keep docs in sync with CI
+claude -p "Compare the current API code with docs/api.yaml.
+List any endpoints that are missing or outdated. Update the docs." \
+  --allowedTools "Read,Grep,Edit"
+```
+
+**Revenue model**: Monthly retainer ($2K–$10K/month) for keeping docs current.
+**Target market**: API-first companies, developer platforms.
+
+### Scenario 6: Automated Bug Bounty Hunting
+
+**The play**: Use Claude Code to scan open-source projects for security vulnerabilities.
+
+```bash
+claude -p "Analyze this codebase for security vulnerabilities:
+- SQL injection
+- XSS
+- Authentication bypasses
+- Insecure deserialization
+- Path traversal
+Report findings with severity, location, and proof of concept." \
+  --allowedTools "Read,Grep,Glob,Bash"
+```
+
+**Revenue model**: Bug bounty payouts ($500–$50K per vulnerability).
+**Platforms**: HackerOne, Bugcrowd, GitHub Security Advisories.
+
+### Scenario 7: Rapid MVP Development Studio
+
+**The play**: Build MVPs for startups in days instead of months.
+
+```
+# Day 1: Spec
+"Interview me about my startup idea using AskUserQuestion. Cover
+technical architecture, user flows, data model, and MVP scope.
+Write the spec to SPEC.md."
+
+# Day 2-3: Build
+"Implement the MVP from SPEC.md. Use Next.js, Prisma, PostgreSQL.
+Write tests. Deploy to Vercel."
+
+# Day 4: Polish
+"Review the entire codebase. Fix any issues. Add error handling,
+loading states, and mobile responsiveness."
+```
+
+**Revenue model**: $5K–$25K per MVP. 2-4 MVPs per month.
+**Target market**: Pre-seed and seed-stage startups.
+
+### Scenario 8: DevOps & Infrastructure Automation
+
+**The play**: Automate infrastructure management with Claude + MCP.
+
+```bash
+# Connect to cloud providers
+claude mcp add --transport http aws-mcp https://mcp.aws.example.com
+claude mcp add --transport http gcp-mcp https://mcp.gcp.example.com
+
+# Automate infrastructure tasks
+claude -p "Analyze our AWS infrastructure for cost optimization.
+Identify unused resources, oversized instances, and savings opportunities.
+Generate a Terraform plan to implement the changes."
+```
+
+**Revenue model**: Managed services ($3K–$15K/month per client).
+**Value prop**: Reduce cloud bills by 30-60% with AI-driven optimization.
+
+### Scenario 9: Test Suite Generation Service
+
+**The play**: Add comprehensive test coverage to untested codebases.
+
+```bash
+# Analyze coverage gaps
+claude -p "Analyze test coverage for src/. Identify untested functions,
+edge cases, and critical paths. Generate a prioritized testing plan."
+
+# Generate tests in parallel
+for module in auth payments users notifications; do
+  claude -p "Write comprehensive tests for src/$module/.
+  Cover happy paths, edge cases, error handling, and integration.
+  Run tests and fix any failures." \
+    --allowedTools "Read,Write,Edit,Bash" &
+done
+wait
+```
+
+**Revenue model**: Per-project ($2K–$20K) or retainer for ongoing coverage.
+**Target market**: Companies preparing for SOC 2, ISO 27001, or acquisition due diligence.
+
+### Scenario 10: AI-Powered Technical Consulting
+
+**The play**: Use Claude Code to analyze client codebases and deliver expert recommendations.
+
+```bash
+# Architecture review
+claude -p "Analyze this codebase architecture. Evaluate:
+- Scalability bottlenecks
+- Security vulnerabilities
+- Performance issues
+- Code quality metrics
+- Dependency health
+Generate a detailed report with prioritized recommendations."
+
+# Generate the report
+claude -p "Create a professional PDF report from the analysis.
+Include executive summary, findings, risk matrix, and action items."
+```
+
+**Revenue model**: $5K–$25K per audit. Ongoing advisory at $2K–$10K/month.
+**Target market**: Series A+ startups, enterprises modernizing legacy systems.
+
+### Scenario 11: Course & Training Content Creation
+
+**The play**: Create and sell technical courses, using Claude Code to generate examples, exercises, and projects.
+
+```bash
+# Generate course content
+claude -p "Create a complete course outline for 'Building Production
+APIs with Node.js'. Include 12 modules, each with:
+- Learning objectives
+- Code examples (working, tested)
+- Exercises with solutions
+- Common mistakes to avoid"
+
+# Generate working project templates
+claude -p "Create a starter project for Module 3: Authentication.
+Include JWT setup, middleware, tests, and a README with instructions."
+```
+
+**Revenue model**: Course sales ($49–$499), cohort-based ($999–$2999), corporate training ($5K–$25K/day).
+**Platforms**: Udemy, Teachable, own website.
+
+### Scenario 12: Internal Tooling & Workflow Automation
+
+**The play**: Build custom internal tools for companies using Claude Code + MCP + Skills.
+
+```yaml
+# Custom skill for client's workflow
+---
+name: deploy-staging
+description: Deploy to staging with all checks
+disable-model-invocation: true
+---
+
+Deploy to staging:
+1. Run full test suite: !`npm test`
+2. Check for security vulnerabilities: !`npm audit`
+3. Build the application: !`npm run build`
+4. Deploy to staging: !`./scripts/deploy-staging.sh`
+5. Run smoke tests against staging
+6. Post results to Slack channel #deployments
+```
+
+**Revenue model**: Custom tool development ($10K–$50K), maintenance retainer ($2K–$5K/month).
+**Target market**: Mid-size companies with repetitive workflows.
+
+### Monetization Summary
+
+| Scenario | Revenue Range | Effort to Start | Scalability |
+|----------|--------------|-----------------|-------------|
+| Freelance Agency | $10K–$50K/mo | Low | Medium |
+| Code Review SaaS | $5K–$100K/mo | Medium | High |
+| Legacy Migration | $5K–$100K/project | Low | Medium |
+| Plugin Marketplace | $5K–$50K/mo | High | Very High |
+| Documentation Service | $2K–$10K/mo | Low | Medium |
+| Bug Bounty | $500–$50K/vuln | Low | Low |
+| MVP Studio | $10K–$100K/mo | Low | Medium |
+| DevOps Automation | $3K–$15K/mo/client | Medium | High |
+| Test Generation | $2K–$20K/project | Low | Medium |
+| Technical Consulting | $5K–$25K/audit | Low | Medium |
+| Course Creation | $5K–$50K/course | Medium | Very High |
+| Internal Tooling | $10K–$50K/project | Medium | High |
+
+---
+
+## 15. Best Practices Cheat Sheet
+
+### Do This
+
+| Practice | Why |
+|----------|-----|
+| **Give Claude verification** (tests, linters, screenshots) | Single highest-leverage thing you can do |
+| **Explore → Plan → Implement → Commit** | Avoid solving the wrong problem |
+| **`/clear` between unrelated tasks** | Prevent context pollution |
+| **Use sub-agents for investigation** | Keep main context clean |
+| **Reference specific files with `@`** | Reduce ambiguity |
+| **Write a concise CLAUDE.md** | Persistent context Claude can't infer |
+| **Use hooks for must-happen actions** | Deterministic, not advisory |
+| **Use skills for reusable workflows** | Don't repeat yourself |
+| **Connect MCP servers for external tools** | Let Claude access your full toolchain |
+| **Course-correct early** (`Esc`, `/rewind`) | Tight feedback loops = better results |
+
+### Don't Do This
+
+| Anti-Pattern | Fix |
+|-------------|-----|
+| **Kitchen sink session** (mixing unrelated tasks) | `/clear` between tasks |
+| **Correcting over and over** (>2 failed corrections) | `/clear` + better initial prompt |
+| **Over-specified CLAUDE.md** (too long, rules get lost) | Prune ruthlessly — if Claude does it right without the rule, delete it |
+| **Trust-then-verify gap** (no tests or checks) | Always provide verification criteria |
+| **Infinite exploration** (unscoped investigation) | Scope narrowly or use sub-agents |
+| **Vague prompts for specific tasks** | Include files, constraints, examples |
+
+### Prompt Engineering Quick Reference
+
+```
+# Bad
+"add tests for foo.py"
+
+# Good
+"write a test for foo.py covering the edge case where the user is logged out.
+avoid mocks. run the tests after implementing."
+
+# Bad
+"fix the login bug"
+
+# Good
+"users report login fails after session timeout. check the auth flow in
+src/auth/, especially token refresh. write a failing test that reproduces
+the issue, then fix it."
+
+# Bad
+"add a calendar widget"
+
+# Good
+"look at how existing widgets are implemented on the home page.
+HotDogWidget.php is a good example. follow the pattern to implement
+a new calendar widget with month selection and year pagination.
+build from scratch without extra libraries."
+```
+
+### Essential Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Esc` | Stop Claude mid-action |
+| `Esc + Esc` | Open rewind menu |
+| `Ctrl+Shift+P` | Toggle Plan Mode |
+| `Ctrl+G` | Open plan in editor |
+| `Ctrl+B` | Background a running task |
+| `/clear` | Reset context |
+| `/compact` | Summarize to free space |
+| `/btw` | Quick question (doesn't enter history) |
+| `/hooks` | Browse configured hooks |
+| `/mcp` | Check MCP server status |
+| `/agents` | Manage sub-agents |
+| `/plugin` | Browse plugin marketplace |
+
+---
+
+## Appendix: Quick Reference Card
+
+### Installation
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+claude
+```
+
+### Essential CLI Flags
+```bash
+claude                          # Interactive mode
+claude -p "prompt"              # Non-interactive (headless)
+claude -p "prompt" --continue   # Continue last conversation
+claude --resume                 # Pick a session to resume
+claude -p "prompt" --output-format json  # JSON output
+claude -p "prompt" --allowedTools "Read,Edit,Bash"  # Auto-approve tools
+claude --model claude-opus-4-6  # Use Opus
+claude --dangerously-skip-permissions  # Bypass all checks (sandbox only!)
+```
+
+### MCP Quick Setup
+```bash
+claude mcp add --transport http github https://api.githubcopilot.com/mcp/
+claude mcp add --transport http notion https://mcp.notion.com/mcp
+claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
+claude mcp list
+/mcp  # Authenticate inside Claude Code
+```
+
+### Skill Quick Setup
+```bash
+mkdir -p .claude/skills/my-skill
+cat > .claude/skills/my-skill/SKILL.md << 'EOF'
+---
+name: my-skill
+description: What this skill does and when to use it
+---
+Your instructions here. Use $ARGUMENTS for passed arguments.
+EOF
+```
+
+### Sub-Agent Quick Setup
+```bash
+cat > .claude/agents/reviewer.md << 'EOF'
+---
+name: reviewer
+description: Reviews code for quality. Use proactively after changes.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+You are a senior code reviewer. Focus on quality, security, and best practices.
+EOF
+```
+
+### Hook Quick Setup
+```json
+// .claude/settings.json
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "Edit|Write",
+      "hooks": [{ "type": "command", "command": "npx prettier --write ." }]
+    }]
+  }
+}
+```
+
+---
+
+> **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
+>
+> Built with Claude Code. Updated March 2026.
+
+
+
+
+
+
+
+
+
+
+
+
+
