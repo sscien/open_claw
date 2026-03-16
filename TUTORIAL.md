@@ -29,6 +29,9 @@
 20. [Cost Management & Optimization](#20-cost-management--optimization)
 21. [Extended Thinking & Effort Levels](#21-extended-thinking--effort-levels)
 22. [Common Workflow Recipes](#22-common-workflow-recipes)
+23. [Model Configuration & Selection](#23-model-configuration--selection)
+24. [Permissions & Security](#24-permissions--security)
+25. [Scheduled Tasks & Automation](#25-scheduled-tasks--automation)
 
 ---
 
@@ -2015,9 +2018,200 @@ cat log.txt | claude -p 'parse for errors' --output-format stream-json
 
 ---
 
+## 23. Model Configuration & Selection
+
+### 23.1 Model Aliases
+
+| Alias | Model | Best For |
+|-------|-------|----------|
+| `sonnet` | Sonnet 4.6 | Daily coding tasks |
+| `opus` | Opus 4.6 | Complex reasoning |
+| `haiku` | Haiku 4.5 | Simple/fast tasks |
+| `sonnet[1m]` | Sonnet 4.6 (1M context) | Long sessions, large codebases |
+| `opus[1m]` | Opus 4.6 (1M context) | Long sessions with complex reasoning |
+| `opusplan` | Opus for planning, Sonnet for execution | Best of both worlds |
+
+### 23.2 Setting Your Model
+
+```bash
+# At startup
+claude --model opus
+
+# During session
+/model sonnet
+
+# Environment variable
+export ANTHROPIC_MODEL=opus
+
+# In settings.json
+{ "model": "opus" }
+```
+
+### 23.3 Effort Levels (Adaptive Reasoning)
+
+Control how deeply Claude thinks before responding:
+
+| Level | Speed | Cost | Use For |
+|-------|-------|------|---------|
+| `low` | Fastest | Cheapest | Simple tasks, quick edits |
+| `medium` | Balanced | Moderate | Most coding tasks (Opus default) |
+| `high` | Slower | Higher | Complex architecture, hard bugs |
+| `max` | Slowest | Highest | Deepest reasoning (Opus only, session-only) |
+
+```bash
+/effort high          # Set during session
+claude --effort high  # At startup
+```
+
+### 23.4 The opusplan Strategy
+
+Uses Opus for planning (complex reasoning) and auto-switches to Sonnet for execution (efficient code generation):
+
+```bash
+claude --model opusplan
+```
+
+### 23.5 1M Context Window
+
+For long sessions with large codebases:
+
+```bash
+/model opus[1m]
+/model sonnet[1m]
+```
+
+Availability: included on Max/Team/Enterprise for Opus. Extra usage required for Sonnet on some plans.
+
+### 23.6 Third-Party Providers
+
+Pin model versions for Bedrock/Vertex/Foundry deployments:
+
+```bash
+export ANTHROPIC_DEFAULT_OPUS_MODEL='us.anthropic.claude-opus-4-6-v1'
+export ANTHROPIC_DEFAULT_SONNET_MODEL='us.anthropic.claude-sonnet-4-6-v1'
+export ANTHROPIC_DEFAULT_HAIKU_MODEL='us.anthropic.claude-haiku-4-5-v1'
+```
+
+---
+
+## 24. Permissions & Security
+
+### 24.1 Permission Modes
+
+| Mode | Description |
+|------|-------------|
+| `default` | Prompts for permission on first use |
+| `acceptEdits` | Auto-accepts file edits |
+| `plan` | Read-only analysis mode |
+| `dontAsk` | Auto-denies unless pre-approved |
+| `bypassPermissions` | Skips all checks (isolated environments only!) |
+
+Switch modes: `Shift+Tab` during a session.
+
+### 24.2 Permission Rules
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git commit *)",
+      "Read(/src/**/*.ts)",
+      "WebFetch(domain:github.com)"
+    ],
+    "deny": [
+      "Bash(git push *)",
+      "Bash(rm -rf *)",
+      "Edit(/migrations/**)"
+    ]
+  }
+}
+```
+
+### 24.3 Rule Syntax
+
+| Rule | Matches |
+|------|---------|
+| `Bash` | All bash commands |
+| `Bash(npm run *)` | Commands starting with `npm run` |
+| `Read(./.env)` | Reading the .env file |
+| `Edit(/src/**/*.ts)` | Editing TypeScript files in src/ |
+| `WebFetch(domain:example.com)` | Fetching from example.com |
+| `mcp__github__*` | All GitHub MCP tools |
+| `Agent(Explore)` | The Explore sub-agent |
+
+### 24.4 Enterprise Managed Settings
+
+Deploy organization-wide policies that users cannot override:
+
+```json
+// /Library/Application Support/ClaudeCode/managed-settings.json (macOS)
+{
+  "permissions": {
+    "deny": ["Bash(rm -rf *)"],
+    "defaultMode": "default"
+  },
+  "disableBypassPermissionsMode": "disable",
+  "availableModels": ["sonnet", "haiku"]
+}
+```
+
+### 24.5 Defense in Depth
+
+Combine permissions + sandboxing + hooks:
+- **Permissions**: Control which tools Claude can use
+- **Sandboxing**: OS-level filesystem/network isolation for Bash
+- **Hooks**: Runtime validation before tool execution
+
+---
+
+## 25. Scheduled Tasks & Automation
+
+### 25.1 The /loop Skill
+
+Run prompts repeatedly on an interval:
+
+```
+/loop 5m check if the deployment finished
+/loop 20m /review-pr 1234
+/loop check the build    # defaults to every 10 minutes
+```
+
+### 25.2 One-Time Reminders
+
+```
+remind me at 3pm to push the release branch
+in 45 minutes, check whether the integration tests passed
+```
+
+### 25.3 Managing Scheduled Tasks
+
+```
+what scheduled tasks do I have?
+cancel the deploy check job
+```
+
+### 25.4 Key Details
+
+- **Session-scoped**: Tasks die when you exit Claude Code
+- **3-day expiry**: Recurring tasks auto-expire after 3 days
+- **Idle-only**: Tasks fire between your turns, not mid-response
+- **Local timezone**: All times are in your local timezone
+- **Max 50 tasks** per session
+
+### 25.5 Durable Scheduling
+
+For tasks that survive restarts:
+- **Desktop App**: Schedule recurring tasks with a GUI
+- **GitHub Actions**: Use `schedule` trigger with cron syntax
+- **CI/CD**: Any cron-based system with `claude -p`
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
