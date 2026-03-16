@@ -38,6 +38,8 @@
 29. [CLI Reference — Essential Flags](#29-cli-reference--essential-flags)
 30. [Status Line — Custom Dashboard](#30-status-line--custom-dashboard)
 31. [Checkpointing — Safe Experimentation](#31-checkpointing--safe-experimentation)
+32. [Claude Code on the Web — Cloud Execution](#32-claude-code-on-the-web--cloud-execution)
+33. [Remote Control — Work From Any Device](#33-remote-control--work-from-any-device)
 
 ---
 
@@ -2600,9 +2602,131 @@ claude --continue --fork-session
 
 ---
 
+## 32. Claude Code on the Web — Cloud Execution
+
+Run Claude Code from your browser with no local setup. Tasks run on Anthropic's secure cloud infrastructure in isolated VMs.
+
+### 32.1 Getting Started
+
+1. Visit [claude.ai/code](https://claude.ai/code)
+2. Connect your GitHub account
+3. Install the Claude GitHub app in your repositories
+4. Select your default environment
+5. Submit your coding task
+
+### 32.2 Best Use Cases
+
+- **Bug fixes and routine tasks** — Well-defined work that doesn't need frequent steering
+- **Parallel work** — Tackle multiple bug fixes simultaneously
+- **Repos not on your machine** — Work on code you don't have locally
+- **Mobile** — Kick off tasks from iOS/Android Claude app
+
+### 32.3 Terminal ↔ Web Handoffs
+
+```bash
+# Start a web session from terminal
+claude --remote "Fix the authentication bug in src/auth/login.ts"
+
+# Pull a web session into your terminal
+claude --teleport
+# Or inside Claude Code:
+/teleport
+```
+
+### 32.4 Parallel Remote Tasks
+
+```bash
+claude --remote "Fix the flaky test in auth.spec.ts"
+claude --remote "Update the API documentation"
+claude --remote "Refactor the logger to use structured output"
+# Monitor all: /tasks
+```
+
+### 32.5 Plan Locally, Execute Remotely
+
+```bash
+# Plan with full context locally
+claude --permission-mode plan
+# "Create a migration plan for the auth system"
+
+# Execute autonomously in the cloud
+claude --remote "Execute the migration plan in docs/migration-plan.md"
+```
+
+### 32.6 Environment Configuration
+
+- **Setup scripts**: Bash scripts that run before Claude Code launches (install deps, configure tools)
+- **Network access**: Limited (default allowlist), Full, or No internet
+- **Environment variables**: Key-value pairs in `.env` format
+- **Default image**: Ubuntu with Python, Node.js, Ruby, Java, Go, Rust, C++, PostgreSQL, Redis
+
+### 32.7 Diff View
+
+Review changes before creating a PR — see exactly what Claude changed, comment on specific lines, and iterate until ready.
+
+---
+
+## 33. Remote Control — Work From Any Device
+
+Continue a local Claude Code session from your phone, tablet, or any browser. Claude keeps running on your machine — the web/mobile interface is just a window into that local session.
+
+### 33.1 Start Remote Control
+
+```bash
+# Server mode (dedicated, no local interaction)
+claude remote-control --name "My Project"
+
+# Interactive mode (local + remote simultaneously)
+claude --remote-control "My Project"
+
+# From an existing session
+/remote-control
+```
+
+### 33.2 Connect From Another Device
+
+- Open the session URL displayed in terminal
+- Scan the QR code (press spacebar to show)
+- Find the session in [claude.ai/code](https://claude.ai/code) session list
+- Open in Claude iOS/Android app
+
+### 33.3 Key Features
+
+- **Full local environment**: Your filesystem, MCP servers, tools, and config stay available
+- **Dual-surface**: Send messages from terminal, browser, and phone interchangeably
+- **Auto-reconnect**: Survives laptop sleep and network drops
+- **No cloud execution**: Everything runs on your machine
+
+### 33.4 Server Mode Flags
+
+| Flag | Description |
+|------|-------------|
+| `--name "Project"` | Custom session title |
+| `--spawn worktree` | Each session gets its own git worktree |
+| `--capacity 32` | Max concurrent sessions |
+| `--sandbox` | Enable filesystem/network isolation |
+
+### 33.5 Enable for All Sessions
+
+```
+/config → Enable Remote Control for all sessions → true
+```
+
+### 33.6 Remote Control vs. Web Sessions
+
+| | Remote Control | Web Sessions |
+|---|---|---|
+| **Runs on** | Your machine | Anthropic cloud |
+| **Local tools** | Full access (MCP, filesystem) | No (cloud environment) |
+| **Setup needed** | Your machine must be on | None |
+| **Best for** | Continuing local work remotely | Kicking off tasks without setup |
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
