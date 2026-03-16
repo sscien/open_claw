@@ -42,6 +42,8 @@
 33. [Remote Control — Work From Any Device](#33-remote-control--work-from-any-device)
 34. [Chrome Extension — Browser Automation](#34-chrome-extension--browser-automation)
 35. [Slack Integration — Team Workflows](#35-slack-integration--team-workflows)
+36. [GitLab CI/CD Integration](#36-gitlab-cicd-integration)
+37. [Automated Code Review (Teams/Enterprise)](#37-automated-code-review-teamsenterprise)
 
 ---
 
@@ -2826,9 +2828,109 @@ security vulnerabilities
 
 ---
 
+## 36. GitLab CI/CD Integration
+
+Claude Code works with GitLab just like GitHub Actions — run AI tasks in CI jobs, create MRs from issues, and automate code changes.
+
+### 36.1 Quick Setup
+
+1. Add `ANTHROPIC_API_KEY` as a masked CI/CD variable (Settings → CI/CD → Variables)
+2. Add a Claude job to `.gitlab-ci.yml`:
+
+```yaml
+stages:
+  - ai
+
+claude:
+  stage: ai
+  image: node:24-alpine3.21
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  before_script:
+    - apk update && apk add --no-cache git curl bash
+    - curl -fsSL https://claude.ai/install.sh | bash
+  script:
+    - claude -p "${AI_FLOW_INPUT:-'Review this MR and implement changes'}"
+      --permission-mode acceptEdits
+      --allowedTools "Bash Read Edit Write"
+```
+
+### 36.2 What Claude Can Do in GitLab
+
+- Create and update MRs from issue descriptions
+- Implement features in a branch and open an MR
+- Fix bugs identified by tests or comments
+- Respond to `@claude` mentions to iterate on changes
+- Analyze performance regressions
+
+### 36.3 Enterprise Providers
+
+Works with AWS Bedrock and Google Vertex AI via OIDC — no static keys needed.
+
+---
+
+## 37. Automated Code Review (Teams/Enterprise)
+
+A managed service that posts inline review comments on every PR — no CI setup required.
+
+### 37.1 How It Works
+
+1. Admin enables Code Review at [claude.ai/admin-settings/claude-code](https://claude.ai/admin-settings/claude-code)
+2. Install the Claude GitHub App
+3. Select repositories and review triggers
+4. Claude analyzes PRs with multiple specialized agents in parallel
+5. Findings posted as inline comments with severity tags
+
+### 37.2 Severity Levels
+
+| Marker | Severity | Meaning |
+|--------|----------|---------|
+| 🔴 | Normal | Bug that should be fixed before merging |
+| 🟡 | Nit | Minor issue, worth fixing but not blocking |
+| 🟣 | Pre-existing | Bug in codebase not introduced by this PR |
+
+### 37.3 Review Triggers
+
+| Trigger | When Reviews Run |
+|---------|-----------------|
+| **Once after PR creation** | When PR is opened or marked ready |
+| **After every push** | On every push to the PR branch |
+| **Manual** | Only when someone comments `@claude review` |
+
+### 37.4 Customize with REVIEW.md
+
+```markdown
+# REVIEW.md — Review-only guidance
+
+## Always check
+- New API endpoints have integration tests
+- Database migrations are backward-compatible
+- Error messages don't leak internal details
+
+## Style
+- Prefer match statements over chained isinstance checks
+- Use structured logging, not f-string interpolation
+
+## Skip
+- Generated files under src/gen/
+- Formatting-only changes in *.lock files
+```
+
+### 37.5 Pricing
+
+Reviews average $15-25, scaling with PR size and complexity. Billed separately through extra usage.
+
+### 37.6 Manual Trigger
+
+Comment `@claude review` on any PR to start a review and opt that PR into push-triggered reviews going forward.
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
