@@ -60,6 +60,10 @@
 51. [Building Custom MCP Servers](#51-building-custom-mcp-servers)
 52. [Building with the Agent SDK (Python/TypeScript)](#52-building-with-the-agent-sdk-pythontypescript)
 53. [Performance Optimization Guide](#53-performance-optimization-guide)
+54. [Multi-Repository Workflows](#54-multi-repository-workflows)
+55. [Testing Strategies with Claude Code](#55-testing-strategies-with-claude-code)
+56. [Debugging Strategies with Claude Code](#56-debugging-strategies-with-claude-code)
+57. [Migration & Refactoring Patterns](#57-migration--refactoring-patterns)
 
 ---
 
@@ -4178,11 +4182,286 @@ for await (const event of client.stream("Analyze this codebase")) {
 
 ---
 
+## 54. Multi-Repository Workflows
+
+### 54.1 Working Across Multiple Repos
+
+```bash
+# Add additional directories to a session
+claude --add-dir ../shared-lib --add-dir ../api-server
+
+# Or during a session
+/add-dir ../shared-lib
+```
+
+Claude can read and modify files across all added directories.
+
+### 54.2 Monorepo Patterns
+
+```
+monorepo/
+├── CLAUDE.md                    # Root conventions (loaded always)
+├── packages/
+│   ├── frontend/
+│   │   ├── CLAUDE.md            # Frontend-specific rules
+│   │   └── .claude/
+│   │       └── rules/
+│   │           └── react.md     # React patterns (path-scoped)
+│   ├── backend/
+│   │   ├── CLAUDE.md            # Backend-specific rules
+│   │   └── .claude/
+│   │       └── skills/
+│   │           └── migrate-db/  # Backend-only skill
+│   └── shared/
+│       └── CLAUDE.md            # Shared library conventions
+```
+
+Claude auto-discovers CLAUDE.md files in subdirectories as it works in them.
+
+### 54.3 Cross-Repo Changes with Agent Teams
+
+```
+Create an agent team to update the shared library and all consumers:
+- Teammate 1: Update the shared library API
+- Teammate 2: Update frontend to use new API
+- Teammate 3: Update backend to use new API
+- Teammate 4: Update tests across all packages
+```
+
+### 54.4 Remote Multi-Repo Sessions
+
+In the Desktop app, remote sessions support multiple repositories:
+1. Select **Remote** environment
+2. Click **+** next to the repo pill
+3. Add additional repositories
+4. Each repo gets its own branch selector
+
+---
+
+## 55. Testing Strategies with Claude Code
+
+### 55.1 Test-Driven Development (TDD)
+
+```
+# Session 1: Write tests first
+"Write comprehensive tests for a URL shortener service.
+Cover: creation, retrieval, expiration, collision handling,
+rate limiting, and invalid URLs."
+
+# Session 2: Implement to pass tests
+"Implement the URL shortener to pass all tests in
+tests/shortener.test.ts. Don't modify the tests."
+```
+
+### 55.2 Coverage-Driven Testing
+
+```
+"Analyze test coverage for src/auth/. Identify:
+1. Untested functions
+2. Untested branches
+3. Missing edge cases
+4. Missing error scenarios
+Generate tests to fill the gaps. Run them after."
+```
+
+### 55.3 Parallel Test Generation
+
+```bash
+# Generate tests for multiple modules in parallel
+for module in auth payments users notifications; do
+  claude -p "Write comprehensive tests for src/$module/.
+    Cover happy paths, edge cases, error handling.
+    Run tests and fix failures." \
+    --allowedTools "Read,Write,Edit,Bash" \
+    --max-turns 15 &
+done
+wait
+```
+
+### 55.4 Visual Testing with Chrome
+
+```
+"Start the dev server, open localhost:3000 in Chrome.
+Navigate through the checkout flow. Take screenshots at each step.
+Compare with the designs in @designs/checkout/. List any differences."
+```
+
+### 55.5 Integration Testing
+
+```
+"Write integration tests for the payment flow:
+1. Create a test user
+2. Add items to cart
+3. Process payment (use Stripe test mode)
+4. Verify order created in database
+5. Verify confirmation email sent
+Use the test helpers in tests/helpers/."
+```
+
+---
+
+## 56. Debugging Strategies with Claude Code
+
+### 56.1 The Systematic Approach
+
+```
+"I'm seeing this error: [paste error + stack trace]
+
+Debug systematically:
+1. Identify the exact line causing the error
+2. Trace the data flow to find where it goes wrong
+3. Check recent git changes that might have caused this
+4. Write a failing test that reproduces the issue
+5. Fix the root cause (not the symptom)
+6. Verify the fix passes the test
+7. Check for similar issues elsewhere in the codebase"
+```
+
+### 56.2 Competing Hypotheses (Agent Team)
+
+```
+"Users report intermittent 500 errors on the /api/checkout endpoint.
+Create an agent team with 4 teammates:
+1. Check for race conditions in the payment processing
+2. Investigate database connection pool exhaustion
+3. Look for memory leaks in the session middleware
+4. Analyze error logs for patterns (time of day, user type, etc.)
+Have them share findings and debate the most likely root cause."
+```
+
+### 56.3 Binary Search Debugging
+
+```
+"The dashboard was working on commit abc123 but is broken now.
+Use git bisect to find the commit that broke it:
+1. git bisect start
+2. git bisect bad HEAD
+3. git bisect good abc123
+4. At each step, run 'npm test -- --grep dashboard'
+5. Report the breaking commit and explain what changed"
+```
+
+### 56.4 Production Debugging with MCP
+
+```bash
+# Connect Sentry for error monitoring
+claude mcp add --transport http sentry https://mcp.sentry.dev/mcp
+
+# Then in Claude Code:
+"Check Sentry for the most common errors in the last 24 hours.
+For the top 3 errors:
+1. Show the stack trace
+2. Identify the root cause
+3. Propose a fix
+4. Estimate the impact (how many users affected)"
+```
+
+### 56.5 Performance Debugging
+
+```
+"Profile the /api/search endpoint:
+1. Add timing logs to each step
+2. Run 100 requests with different query sizes
+3. Identify the bottleneck
+4. Propose and implement an optimization
+5. Benchmark before and after
+6. Remove the timing logs"
+```
+
+---
+
+## 57. Migration & Refactoring Patterns
+
+### 57.1 The /batch Approach (Large Scale)
+
+```
+/batch migrate all React class components in src/ to functional components with hooks
+```
+
+This automatically:
+1. Scans the codebase for matching files
+2. Creates 5-30 independent work units
+3. Presents a plan for approval
+4. Spawns one agent per unit in isolated worktrees
+5. Each agent migrates, tests, and opens a PR
+
+### 57.2 Incremental Migration
+
+```
+"I'm migrating from Express to Fastify. Start with the simplest
+routes first:
+1. List all route files sorted by complexity (fewest dependencies first)
+2. Migrate the simplest 5 routes
+3. Run tests after each migration
+4. Stop and report progress"
+```
+
+### 57.3 Database Migration
+
+```
+"We need to split the 'users' table into 'users' and 'profiles'.
+Plan the migration:
+1. Create the new 'profiles' table schema
+2. Write a data migration script
+3. Update all queries that reference user profile fields
+4. Update the ORM models
+5. Write rollback scripts
+6. Test with a copy of production data"
+```
+
+### 57.4 API Version Migration
+
+```
+"Migrate our API from v1 to v2:
+1. Create v2 route handlers (copy from v1)
+2. Apply the breaking changes listed in @docs/v2-changes.md
+3. Update request/response types
+4. Add v1 → v2 compatibility layer
+5. Update all internal consumers
+6. Write migration guide for external consumers
+7. Add deprecation warnings to v1 endpoints"
+```
+
+### 57.5 Framework Migration Checklist
+
+```yaml
+---
+name: migrate-framework
+description: Migrate between frameworks with safety checks
+disable-model-invocation: true
+---
+
+Migrate $ARGUMENTS[0] from $ARGUMENTS[1] to $ARGUMENTS[2]:
+
+Pre-migration:
+- [ ] Full test suite passes
+- [ ] Git branch created
+- [ ] Dependencies audited
+
+Migration:
+- [ ] Core framework swapped
+- [ ] Routing migrated
+- [ ] Middleware migrated
+- [ ] State management migrated
+- [ ] Tests updated
+- [ ] Build system updated
+
+Post-migration:
+- [ ] All tests pass
+- [ ] No TypeScript errors
+- [ ] No lint errors
+- [ ] Performance benchmarked
+- [ ] PR created with detailed description
+```
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
