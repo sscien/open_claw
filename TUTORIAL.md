@@ -92,6 +92,10 @@
 83. [Claude Code for Mobile Development](#83-claude-code-for-mobile-development)
 84. [Claude Code for Testing at Scale](#84-claude-code-for-testing-at-scale)
 85. [Version History & Changelog](#85-version-history--changelog)
+86. [Claude Code for Open Source Maintainers](#86-claude-code-for-open-source-maintainers)
+87. [Claude Code for API Development](#87-claude-code-for-api-development)
+88. [Claude Code for Machine Learning Projects](#88-claude-code-for-machine-learning-projects)
+89. [Claude Code Tips & Tricks](#89-claude-code-tips--tricks)
 
 ---
 
@@ -7093,12 +7097,417 @@ This tutorial is written for Claude Code v2.1.x (March 2026) with:
 
 ---
 
-> **This is the most comprehensive Claude Code tutorial available — 85 chapters, 7,000+ lines covering every feature, pattern, and monetization scenario.**
+## 86. Claude Code for Open Source Maintainers
+
+### 86.1 Automated Issue Triage
+
+```yaml
+# .github/workflows/issue-triage.yml
+name: Issue Triage
+on:
+  issues:
+    types: [opened]
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Triage this new issue:
+            1. Classify: bug, feature request, question, or documentation
+            2. Estimate complexity: trivial, small, medium, large
+            3. Suggest labels
+            4. If it's a bug, ask for reproduction steps if missing
+            5. If it's a feature, ask for use cases if missing
+            6. If it's a duplicate, link to the existing issue
+            7. Add a friendly welcome message for first-time contributors
+            8. If it's a good-first-issue, label it accordingly
+          claude_args: "--model claude-sonnet-4-6 --max-turns 5"
+```
+
+### 86.2 Contributor Onboarding Skill
+
+```yaml
+---
+name: contributor-guide
+description: Help new contributors get started with the project
+---
+Welcome new contributors! Here's how to get started:
+
+1. **Setup**: Read CONTRIBUTING.md and run the setup script
+2. **Find an issue**: Look for `good-first-issue` labels
+3. **Understand the code**: Key directories and their purposes
+4. **Make changes**: Follow the coding conventions in CLAUDE.md
+5. **Test**: Run the test suite and add tests for your changes
+6. **Submit**: Create a PR following the PR template
+
+Common questions:
+- How to run tests: !`cat package.json | jq '.scripts | to_entries[] | select(.key | test("test")) | "\(.key): \(.value)"'`
+- How to lint: !`cat package.json | jq '.scripts | to_entries[] | select(.key | test("lint")) | "\(.key): \(.value)"'`
+- Project structure: !`find src -maxdepth 2 -type d | head -20`
+```
+
+### 86.3 Release Automation
+
+```yaml
+---
+name: release
+description: Automate the release process
+disable-model-invocation: true
+---
+Create release $ARGUMENTS:
+
+1. Verify all tests pass: !`npm test 2>&1 | tail -5`
+2. Check for unreleased changes: !`git log $(git describe --tags --abbrev=0)..HEAD --oneline`
+3. Generate changelog from commits
+4. Update version in package.json
+5. Update CHANGELOG.md
+6. Create a git tag
+7. Build the project
+8. Create GitHub release with changelog
+9. Publish to npm (if applicable)
+10. Post release announcement
+```
+
+### 86.4 Automated Dependency Updates with Review
+
+```yaml
+# .github/workflows/deps-review.yml
+name: Weekly Dependency Review
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review and update dependencies:
+            1. Check for outdated packages
+            2. For each update, read the changelog for breaking changes
+            3. Update safe packages (patch + minor)
+            4. Run tests after each update
+            5. If tests fail, revert that update
+            6. Create a PR with all safe updates
+            7. In the PR description, list:
+               - Updated packages with version changes
+               - Packages skipped (major updates needing manual review)
+               - Any test failures encountered
+          claude_args: "--max-turns 20"
+```
+
+---
+
+## 87. Claude Code for API Development
+
+### 87.1 OpenAPI Spec Generator
+
+```yaml
+---
+name: generate-openapi
+description: Generate OpenAPI 3.0 spec from code
+disable-model-invocation: true
+---
+Generate an OpenAPI 3.0 specification:
+
+1. Scan all route files in src/routes/
+2. For each endpoint, extract:
+   - HTTP method and path
+   - Request parameters (path, query, body)
+   - Request body schema (from validation)
+   - Response schemas (from TypeScript types)
+   - Authentication requirements
+   - Rate limiting info
+3. Generate openapi.yaml with:
+   - Info section (from package.json)
+   - Server URLs (from .env.example)
+   - All endpoints with full schemas
+   - Security schemes
+   - Example requests and responses
+4. Validate the spec: !`npx @redocly/cli lint openapi.yaml`
+```
+
+### 87.2 API Client Generator
+
+```
+"Generate a TypeScript API client from our OpenAPI spec:
+1. Read openapi.yaml
+2. Generate typed client functions for each endpoint
+3. Include request/response types
+4. Add error handling with typed errors
+5. Support both fetch and axios
+6. Add JSDoc comments from the spec descriptions
+7. Write tests using MSW for mocking
+Save to src/api/client.ts"
+```
+
+### 87.3 GraphQL Schema from REST
+
+```
+"Convert our REST API to GraphQL:
+1. Read all REST endpoints in src/routes/
+2. Map REST resources to GraphQL types
+3. Map GET endpoints to queries
+4. Map POST/PUT/DELETE to mutations
+5. Add proper input types
+6. Handle pagination with cursor-based connections
+7. Generate schema.graphql
+8. Generate resolvers that call existing service layer
+9. Write integration tests"
+```
+
+### 87.4 API Versioning Skill
+
+```yaml
+---
+name: api-version
+description: Create a new API version with backward compatibility
+disable-model-invocation: true
+---
+Create API version $ARGUMENTS:
+
+1. Copy current version routes to new version directory
+2. Apply the breaking changes specified
+3. Create a compatibility layer:
+   - Old version routes still work
+   - Deprecation headers on old endpoints
+   - Migration guide for consumers
+4. Update OpenAPI spec for both versions
+5. Update API client to support version selection
+6. Write tests for both versions
+7. Add deprecation timeline to documentation
+```
+
+---
+
+## 88. Claude Code for Machine Learning Projects
+
+### 88.1 ML Experiment Tracking
+
+```yaml
+---
+name: ml-experiment
+description: Set up and track ML experiments
+disable-model-invocation: true
+---
+Run ML experiment: $ARGUMENTS
+
+1. Create experiment directory with timestamp
+2. Log hyperparameters to experiment.json
+3. Run training with progress logging
+4. Log metrics (loss, accuracy, F1) per epoch
+5. Save model checkpoints
+6. Generate training curves (matplotlib)
+7. Compare with previous experiments
+8. Write experiment summary with:
+   - Hypothesis
+   - Configuration
+   - Results
+   - Comparison with baseline
+   - Next steps
+```
+
+### 88.2 Data Pipeline Validation
+
+```
+"Validate the data pipeline:
+1. Check input data schema matches expected format
+2. Verify no data leakage between train/test splits
+3. Check for class imbalance and suggest resampling
+4. Validate feature distributions (no unexpected nulls or outliers)
+5. Verify preprocessing is deterministic (same input → same output)
+6. Check that transformations are invertible where needed
+7. Generate a data quality report"
+```
+
+### 88.3 Model Deployment Checklist
+
+```yaml
+---
+name: ml-deploy
+description: Pre-deployment checklist for ML models
+disable-model-invocation: true
+---
+Pre-deployment checklist for model: $ARGUMENTS
+
+## Model Quality
+- [ ] Test set performance meets threshold
+- [ ] No data leakage in training pipeline
+- [ ] Model size is within deployment constraints
+- [ ] Inference latency meets SLA (<100ms p95)
+- [ ] Model handles edge cases gracefully
+
+## Infrastructure
+- [ ] Model serialized in portable format (ONNX/TorchScript)
+- [ ] Serving infrastructure configured (TorchServe/TFServing/Triton)
+- [ ] Auto-scaling configured based on request volume
+- [ ] Health check endpoint implemented
+- [ ] Graceful degradation if model unavailable
+
+## Monitoring
+- [ ] Input data distribution monitoring
+- [ ] Prediction distribution monitoring
+- [ ] Latency and throughput metrics
+- [ ] Error rate alerting
+- [ ] Model drift detection configured
+
+## Rollout
+- [ ] A/B test or canary deployment configured
+- [ ] Rollback procedure documented and tested
+- [ ] Feature flags for model version switching
+- [ ] Shadow mode testing completed
+```
+
+---
+
+## 89. Claude Code Tips & Tricks
+
+### 89.1 Power User Shortcuts
+
+```bash
+# Start with a specific model and effort
+claude --model opus --effort high
+
+# Continue last session with a follow-up
+claude -c -p "Now add tests for what you just implemented"
+
+# Run in plan mode from CLI
+claude --permission-mode plan -p "How should we refactor the auth system?"
+
+# Fan out with structured output
+claude -p "List all TODO comments" --output-format json | jq '.result'
+
+# Use opusplan for best of both worlds
+claude --model opusplan
+
+# Name sessions for easy retrieval
+claude -n "payment-refactor"
+claude --resume payment-refactor
+
+# Start in a worktree for isolation
+claude -w feature-auth
+
+# Create a web session from terminal
+claude --remote "Fix the login bug"
+
+# Enable remote control for phone access
+claude --rc "My Project"
+```
+
+### 89.2 CLAUDE.md Power Patterns
+
+```markdown
+# Import external docs
+See @README.md for overview.
+API docs: @docs/api-reference.md
+Personal overrides: @~/.claude/my-project-prefs.md
+
+# Conditional instructions (via rules)
+# .claude/rules/python-only.md
+---
+paths: ["**/*.py"]
+---
+Use type hints on all functions. Prefer pathlib over os.path.
+
+# Emphasis for critical rules
+IMPORTANT: Never commit directly to main. Always use feature branches.
+CRITICAL: All API endpoints must validate input with zod schemas.
+```
+
+### 89.3 Context Conservation Tricks
+
+```
+# Use /btw for quick questions (zero context cost)
+/btw what's the name of that config file?
+
+# Use sub-agents for research (isolated context)
+"Use a sub-agent to find all files related to authentication"
+
+# Use targeted compaction
+/compact Focus only on the payment module changes
+
+# Use Haiku for simple sub-agent tasks
+# In agent config: model: haiku
+
+# Disable unused MCP servers
+/mcp → disable idle servers
+
+# Use path-scoped rules instead of CLAUDE.md
+# Rules only load when working with matching files
+```
+
+### 89.4 Debugging Claude Code Itself
+
+```bash
+# Check installation
+claude doctor
+
+# Debug mode with category filtering
+claude --debug "api,hooks,mcp"
+
+# Check what's consuming context
+/context
+
+# Check which instructions are loaded
+/memory
+
+# Check MCP server status
+/mcp
+
+# Check configured hooks
+/hooks
+
+# View session debug log
+/debug
+
+# Check current model and account
+/status
+```
+
+### 89.5 Hidden Gems
+
+```
+# Open your prompt in a full text editor
+Ctrl+G
+
+# Background a long-running task
+Ctrl+B (press twice in tmux)
+
+# Toggle verbose output to see Claude's thinking
+Ctrl+O
+
+# Reverse search through command history
+Ctrl+R
+
+# Paste an image from clipboard
+Ctrl+V
+
+# Kill all background agents
+Ctrl+F (press twice to confirm)
+
+# Use ! for quick bash commands without Claude
+! git status
+! npm test
+! ls -la
+
+# Tab completion for ! commands
+! npm <Tab>
+```
+
+---
+
+> **This is the most comprehensive Claude Code tutorial available — 89 chapters, 7,500+ lines covering every feature, pattern, and monetization scenario.**
 >
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
