@@ -47,6 +47,8 @@
 38. [Enterprise Deployment Guide](#38-enterprise-deployment-guide)
 39. [Environment Variables Reference](#39-environment-variables-reference)
 40. [Glossary](#40-glossary)
+41. [Desktop App — Visual Interface](#41-desktop-app--visual-interface)
+42. [VS Code Extension — IDE Integration](#42-vs-code-extension--ide-integration)
 
 ---
 
@@ -3119,9 +3121,140 @@ Users cannot switch to models not in this list.
 
 ---
 
+## 41. Desktop App — Visual Interface
+
+The Desktop app provides a graphical interface for Claude Code with features beyond the CLI.
+
+### 41.1 Desktop-Only Features
+
+| Feature | Description |
+|---------|-------------|
+| **Visual diff review** | Side-by-side diffs with inline comments |
+| **Live app preview** | Embedded browser for dev servers |
+| **PR monitoring** | Auto-fix failing CI, auto-merge when green |
+| **Parallel sessions** | Automatic git worktree isolation per session |
+| **Scheduled tasks** | Recurring tasks with GUI setup |
+| **Connectors** | GitHub, Slack, Linear, Notion integrations |
+| **SSH sessions** | Run on remote machines via SSH |
+| **Remote sessions** | Run on Anthropic cloud, continue if laptop closes |
+
+### 41.2 Installation
+
+- [macOS](https://claude.ai/api/desktop/darwin/universal/dmg/latest/redirect) (Intel + Apple Silicon)
+- [Windows](https://claude.ai/api/desktop/win32/x64/exe/latest/redirect) (x64)
+- [Windows ARM64](https://claude.ai/api/desktop/win32/arm64/exe/latest/redirect) (remote sessions only)
+
+### 41.3 Permission Modes
+
+| Mode | Behavior |
+|------|----------|
+| **Ask permissions** | Claude asks before each action (recommended for new users) |
+| **Auto accept edits** | Auto-accepts file edits, asks for commands |
+| **Plan mode** | Analyze and plan without modifying files |
+| **Bypass permissions** | No prompts (enable in Settings, sandbox only) |
+
+### 41.4 Scheduled Tasks
+
+Create recurring tasks that run automatically:
+
+1. Click **Schedule** in sidebar → **+ New task**
+2. Set name, prompt, frequency (manual/hourly/daily/weekdays/weekly)
+3. Tasks run locally — app must be open and computer awake
+4. Missed runs catch up with one run when computer wakes
+
+### 41.5 PR Monitoring
+
+After opening a PR, a CI status bar appears:
+- **Auto-fix**: Claude automatically fixes failing CI checks
+- **Auto-merge**: Claude merges when all checks pass (squash merge)
+
+### 41.6 Preview Servers
+
+Claude starts dev servers and opens an embedded browser. Configure in `.claude/launch.json`:
+
+```json
+{
+  "version": "0.0.1",
+  "autoVerify": true,
+  "configurations": [{
+    "name": "web",
+    "runtimeExecutable": "npm",
+    "runtimeArgs": ["run", "dev"],
+    "port": 3000
+  }]
+}
+```
+
+### 41.7 CLI → Desktop Handoff
+
+```
+/desktop    # Move current CLI session to Desktop app
+```
+
+---
+
+## 42. VS Code Extension — IDE Integration
+
+The VS Code extension provides inline diffs, @-mentions, plan review, and conversation history directly in your editor.
+
+### 42.1 Installation
+
+- [Install for VS Code](vscode:extension/anthropic.claude-code)
+- [Install for Cursor](cursor:extension/anthropic.claude-code)
+- Or search "Claude Code" in Extensions view (`Cmd+Shift+X`)
+
+### 42.2 Key Features
+
+| Feature | How |
+|---------|-----|
+| **Open Claude** | Click Spark icon in editor toolbar, or `Cmd+Shift+P` → "Claude Code" |
+| **@-mention files** | Type `@filename` in prompt for context |
+| **Insert selection** | `Option+K` (Mac) / `Alt+K` to reference selected code |
+| **Inline diffs** | Side-by-side comparison of proposed changes |
+| **Plan review** | Plan opens as editable markdown document |
+| **Multiple tabs** | Open in New Tab for parallel conversations |
+| **Resume sessions** | Dropdown at top of panel shows history |
+| **Browser automation** | `@browser` followed by instructions |
+| **Plugin management** | Type `/plugins` in prompt box |
+
+### 42.3 Essential Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+Esc` / `Ctrl+Esc` | Toggle focus between editor and Claude |
+| `Cmd+Shift+Esc` / `Ctrl+Shift+Esc` | Open new conversation tab |
+| `Option+K` / `Alt+K` | Insert @-mention for current selection |
+| `Cmd+N` / `Ctrl+N` | New conversation (when Claude focused) |
+| `Shift+Enter` | Multi-line input |
+
+### 42.4 Extension Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `selectedModel` | `default` | Model for new conversations |
+| `useTerminal` | `false` | CLI mode instead of graphical panel |
+| `initialPermissionMode` | `default` | Default permission mode |
+| `autosave` | `true` | Auto-save files before Claude reads/writes |
+
+### 42.5 Third-Party Providers in VS Code
+
+1. Disable login prompt in settings
+2. Configure provider in `~/.claude/settings.json`
+3. Supports Bedrock, Vertex AI, and Foundry
+
+### 42.6 Checkpoints in VS Code
+
+Hover over any message to reveal the rewind button:
+- **Fork conversation from here**: New branch, keep code
+- **Rewind code to here**: Revert files, keep conversation
+- **Fork and rewind**: New branch + revert files
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
