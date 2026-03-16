@@ -35,6 +35,9 @@
 26. [Project Rules — Scoped Instructions](#26-project-rules--scoped-instructions)
 27. [Auto Memory Deep Dive](#27-auto-memory-deep-dive)
 28. [Troubleshooting Guide](#28-troubleshooting-guide)
+29. [CLI Reference — Essential Flags](#29-cli-reference--essential-flags)
+30. [Status Line — Custom Dashboard](#30-status-line--custom-dashboard)
+31. [Checkpointing — Safe Experimentation](#31-checkpointing--safe-experimentation)
 
 ---
 
@@ -2427,9 +2430,180 @@ claude --version         # Verify installation
 
 ---
 
+## 29. CLI Reference — Essential Flags
+
+### 29.1 Core Commands
+
+| Command | Description |
+|---------|-------------|
+| `claude` | Start interactive session |
+| `claude "query"` | Start with initial prompt |
+| `claude -p "query"` | Non-interactive (headless) mode |
+| `cat file \| claude -p "query"` | Process piped content |
+| `claude -c` | Continue most recent conversation |
+| `claude -r "name"` | Resume session by name or ID |
+| `claude update` | Update to latest version |
+| `claude auth login` | Sign in |
+| `claude auth status` | Check authentication |
+| `claude agents` | List all configured sub-agents |
+| `claude mcp` | Configure MCP servers |
+| `claude doctor` | Diagnose installation issues |
+
+### 29.2 Most Useful Flags
+
+| Flag | Description |
+|------|-------------|
+| `--model opus` | Set model (alias or full name) |
+| `--effort high` | Set effort level (low/medium/high/max) |
+| `--allowedTools "Bash,Read,Edit"` | Auto-approve specific tools |
+| `--disallowedTools "Agent(Explore)"` | Block specific tools |
+| `--output-format json` | Structured output (text/json/stream-json) |
+| `--json-schema '{...}'` | Validated JSON output matching schema |
+| `--max-turns 10` | Limit agentic turns (headless only) |
+| `--max-budget-usd 5.00` | Spending cap (headless only) |
+| `--permission-mode plan` | Start in plan mode |
+| `--append-system-prompt "..."` | Add to system prompt |
+| `--worktree feature-auth` | Start in isolated git worktree |
+| `--add-dir ../lib` | Add additional working directories |
+| `--name "my-feature"` | Name the session |
+| `--continue --fork-session` | Branch off from a conversation |
+| `--from-pr 123` | Resume sessions linked to a PR |
+| `--plugin-dir ./my-plugin` | Load plugin for testing |
+| `--agents '{...}'` | Define ephemeral sub-agents via JSON |
+| `--verbose` | Show full turn-by-turn output |
+| `--debug "api,hooks"` | Debug mode with category filtering |
+| `--dangerously-skip-permissions` | Bypass all checks (sandbox only!) |
+| `--remote` | Create a web session on claude.ai |
+| `--remote-control` | Enable Remote Control |
+| `--fallback-model sonnet` | Auto-fallback when primary overloaded |
+
+### 29.3 System Prompt Flags
+
+| Flag | Behavior |
+|------|----------|
+| `--system-prompt "..."` | Replace entire system prompt |
+| `--system-prompt-file ./prompt.txt` | Replace from file |
+| `--append-system-prompt "..."` | Append to default prompt |
+| `--append-system-prompt-file ./rules.txt` | Append from file |
+
+---
+
+## 30. Status Line — Custom Dashboard
+
+The status line is a customizable bar at the bottom of Claude Code that displays context usage, costs, git status, or anything else.
+
+### 30.1 Quick Setup
+
+```
+/statusline show model name and context percentage with a progress bar
+```
+
+Claude generates a script and configures it automatically.
+
+### 30.2 Manual Setup
+
+```json
+// ~/.claude/settings.json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  }
+}
+```
+
+### 30.3 Example: Context + Git + Cost
+
+```bash
+#!/bin/bash
+# ~/.claude/statusline.sh
+input=$(cat)
+MODEL=$(echo "$input" | jq -r '.model.display_name')
+DIR=$(echo "$input" | jq -r '.workspace.current_dir')
+PCT=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
+COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
+
+# Color-coded progress bar
+if [ "$PCT" -ge 90 ]; then COLOR='\033[31m'
+elif [ "$PCT" -ge 70 ]; then COLOR='\033[33m'
+else COLOR='\033[32m'; fi
+RESET='\033[0m'
+
+FILLED=$((PCT / 10)); EMPTY=$((10 - FILLED))
+BAR=$(printf "%${FILLED}s" | tr ' ' '█')$(printf "%${EMPTY}s" | tr ' ' '░')
+
+BRANCH=""
+git rev-parse --git-dir > /dev/null 2>&1 && \
+  BRANCH=" | 🌿 $(git branch --show-current 2>/dev/null)"
+
+COST_FMT=$(printf '$%.2f' "$COST")
+echo -e "[$MODEL] 📁 ${DIR##*/}$BRANCH | ${COLOR}${BAR}${RESET} ${PCT}% | $COST_FMT"
+```
+
+### 30.4 Available Data Fields
+
+| Field | Description |
+|-------|-------------|
+| `model.display_name` | Current model name |
+| `workspace.current_dir` | Working directory |
+| `context_window.used_percentage` | Context usage % |
+| `cost.total_cost_usd` | Session cost |
+| `cost.total_duration_ms` | Wall-clock time |
+| `cost.total_lines_added/removed` | Code changes |
+| `session_id` | Session identifier |
+| `vim.mode` | Vim mode (if enabled) |
+| `worktree.name` | Active worktree name |
+
+---
+
+## 31. Checkpointing — Safe Experimentation
+
+Claude Code automatically tracks file edits, letting you rewind to any previous state.
+
+### 31.1 How It Works
+
+- Every user prompt creates a new checkpoint
+- Checkpoints persist across sessions
+- Auto-cleaned after 30 days
+
+### 31.2 Rewind Menu
+
+Press `Esc + Esc` or type `/rewind`:
+
+| Action | What It Does |
+|--------|-------------|
+| **Restore code and conversation** | Revert both to that point |
+| **Restore conversation** | Rewind messages, keep current code |
+| **Restore code** | Revert files, keep conversation |
+| **Summarize from here** | Compress messages from this point forward |
+
+### 31.3 Use Cases
+
+- **Exploring alternatives**: Try different approaches, rewind if wrong
+- **Recovering from mistakes**: Undo changes that broke things
+- **Freeing context**: Summarize verbose debugging from midpoint forward
+- **Iterating on features**: Experiment knowing you can revert
+
+### 31.4 Limitations
+
+- Bash command changes (rm, mv, cp) are NOT tracked
+- External changes outside Claude Code are not captured
+- Not a replacement for git — use both together
+
+### 31.5 Fork Sessions
+
+Branch off from a conversation to try a different approach while preserving the original:
+
+```bash
+claude --continue --fork-session
+```
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
