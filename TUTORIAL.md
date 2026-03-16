@@ -87,6 +87,11 @@
 78. [Claude Code for DevOps & Infrastructure](#78-claude-code-for-devops--infrastructure)
 79. [Claude Code for Data Engineering](#79-claude-code-for-data-engineering)
 80. [The Complete Claude Code Command Reference](#80-the-complete-claude-code-command-reference)
+81. [Claude Code for Frontend Development](#81-claude-code-for-frontend-development)
+82. [Claude Code for Backend Development](#82-claude-code-for-backend-development)
+83. [Claude Code for Mobile Development](#83-claude-code-for-mobile-development)
+84. [Claude Code for Testing at Scale](#84-claude-code-for-testing-at-scale)
+85. [Version History & Changelog](#85-version-history--changelog)
 
 ---
 
@@ -6757,12 +6762,344 @@ Output as executable SQL or Python assertions.
 
 ---
 
-> **This is the most comprehensive Claude Code tutorial available — 80 chapters covering every feature, pattern, and monetization scenario.**
+## 81. Claude Code for Frontend Development
+
+### 81.1 Component Development Workflow
+
+```
+# Build a component from a design
+"Look at the Figma design at @designs/dashboard-card.png.
+Build a React component that matches it exactly:
+- Use Tailwind CSS for styling
+- Make it responsive (mobile-first)
+- Add proper TypeScript props interface
+- Include loading and error states
+- Write Storybook stories for each state
+- Take a screenshot and compare with the design"
+```
+
+### 81.2 Accessibility Audit Skill
+
+```yaml
+---
+name: a11y-audit
+description: Audit components for accessibility compliance
+---
+Audit the component for accessibility:
+
+WCAG 2.1 AA Checklist:
+- [ ] All images have meaningful alt text
+- [ ] Color contrast ratio ≥ 4.5:1 for text, ≥ 3:1 for large text
+- [ ] All interactive elements are keyboard accessible
+- [ ] Focus order is logical and visible
+- [ ] Form inputs have associated labels
+- [ ] Error messages are announced to screen readers
+- [ ] ARIA attributes are used correctly
+- [ ] No content is conveyed by color alone
+- [ ] Touch targets are ≥ 44x44px on mobile
+- [ ] Animations respect prefers-reduced-motion
+
+For each issue found:
+- Severity: Critical / Major / Minor
+- WCAG criterion violated
+- Current code
+- Fixed code
+```
+
+### 81.3 Performance Optimization
+
+```
+"Analyze the frontend bundle for performance:
+1. Run: npx webpack-bundle-analyzer stats.json
+2. Identify the largest dependencies
+3. Find code that could be lazy-loaded
+4. Check for duplicate dependencies
+5. Suggest tree-shaking improvements
+6. Estimate size reduction for each suggestion"
+```
+
+### 81.4 Design System Skill
+
+```yaml
+---
+name: design-system
+description: Enforce design system consistency in UI components
+paths:
+  - "src/components/**/*.tsx"
+  - "src/ui/**/*.tsx"
+---
+Design system rules:
+- Use design tokens from @styles/tokens.ts (never hardcode colors/spacing)
+- Spacing: only use 4px grid (4, 8, 12, 16, 24, 32, 48, 64)
+- Typography: only use defined text styles (heading-1 through body-small)
+- Colors: only use semantic colors (primary, secondary, error, warning, success)
+- Border radius: sm (4px), md (8px), lg (12px), full (9999px)
+- Shadows: sm, md, lg (defined in tokens)
+- Breakpoints: sm (640px), md (768px), lg (1024px), xl (1280px)
+- Icons: use Lucide icons only, size 16/20/24px
+```
+
+---
+
+## 82. Claude Code for Backend Development
+
+### 82.1 API Endpoint Generator
+
+```yaml
+---
+name: new-endpoint
+description: Generate a new API endpoint following project conventions
+disable-model-invocation: true
+---
+Create a new API endpoint: $ARGUMENTS
+
+1. Look at existing endpoints in src/routes/ for patterns
+2. Create the route handler with:
+   - Input validation (zod schema)
+   - Authentication middleware
+   - Authorization check
+   - Business logic in src/services/
+   - Proper error handling
+   - Response typing
+3. Create the service layer function
+4. Write integration tests
+5. Add to OpenAPI spec
+6. Run tests to verify
+```
+
+### 82.2 Database Migration Skill
+
+```yaml
+---
+name: new-migration
+description: Create a safe database migration
+disable-model-invocation: true
+---
+Create a database migration for: $ARGUMENTS
+
+Safety checklist:
+1. Write the UP migration
+2. Write the DOWN migration (must be reversible)
+3. Check for:
+   - Large table locks (use concurrent index creation)
+   - Data loss risk (add columns before removing old ones)
+   - Default values for new NOT NULL columns
+   - Index creation on large tables (do it concurrently)
+4. Estimate migration time based on table size
+5. Test migration on a copy of the schema
+6. Document any required data backfill steps
+```
+
+### 82.3 Microservice Communication Patterns
+
+```yaml
+---
+name: service-communication
+description: Patterns for inter-service communication
+---
+Service communication rules:
+- Use async messaging (events) for non-critical paths
+- Use sync HTTP/gRPC only when response is needed immediately
+- All events must be idempotent (safe to process twice)
+- Include correlation ID in all requests for tracing
+- Set timeouts on all external calls (default: 5s)
+- Implement circuit breaker for external dependencies
+- Use exponential backoff for retries (max 3 attempts)
+- Dead letter queue for failed messages
+- Schema registry for event contracts
+```
+
+### 82.4 Caching Strategy Skill
+
+```yaml
+---
+name: caching-strategy
+description: Design and implement caching for performance
+---
+Caching conventions:
+- Cache key format: {service}:{entity}:{id}:{version}
+- TTL by data type:
+  - User session: 30 minutes
+  - User profile: 5 minutes
+  - Product catalog: 1 hour
+  - Static config: 24 hours
+- Cache invalidation: write-through for critical data, TTL for others
+- Always handle cache miss gracefully (fallback to DB)
+- Monitor cache hit rate (target: >90%)
+- Use Redis for shared cache, in-memory for hot paths
+- Never cache PII or sensitive data without encryption
+```
+
+---
+
+## 83. Claude Code for Mobile Development
+
+### 83.1 React Native Patterns
+
+```yaml
+---
+name: rn-patterns
+description: React Native development conventions
+paths:
+  - "src/**/*.tsx"
+  - "app/**/*.tsx"
+---
+React Native conventions:
+- Use React Navigation for routing
+- Use Zustand or Jotai for state (not Redux)
+- Platform-specific code: use .ios.tsx / .android.tsx suffixes
+- Images: use @2x and @3x variants
+- Animations: use Reanimated 3 (not Animated API)
+- Lists: always use FlashList (not FlatList)
+- Forms: use react-hook-form with zod validation
+- Testing: use @testing-library/react-native
+- Deep links: handle in app/_layout.tsx
+- Push notifications: use expo-notifications
+```
+
+### 83.2 App Store Submission Checklist
+
+```yaml
+---
+name: app-store-check
+description: Pre-submission checklist for App Store / Play Store
+disable-model-invocation: true
+---
+Pre-submission checklist for $ARGUMENTS:
+
+## iOS (App Store)
+- [ ] App icons: all required sizes generated
+- [ ] Launch screen configured
+- [ ] Privacy manifest (PrivacyInfo.xcprivacy) up to date
+- [ ] NSUserTrackingUsageDescription if using tracking
+- [ ] Camera/location/notification permission descriptions
+- [ ] No private API usage
+- [ ] Minimum iOS version set correctly
+- [ ] Release build tested on physical device
+
+## Android (Play Store)
+- [ ] Adaptive icons configured
+- [ ] ProGuard/R8 rules tested
+- [ ] Target SDK version meets Play Store requirements
+- [ ] Permissions declared in AndroidManifest.xml
+- [ ] 64-bit support enabled
+- [ ] Release APK/AAB signed correctly
+- [ ] Tested on multiple screen sizes
+
+## Both Platforms
+- [ ] All API endpoints use HTTPS
+- [ ] Offline mode handles gracefully
+- [ ] Deep links tested
+- [ ] Push notifications tested
+- [ ] Analytics events verified
+- [ ] Crash reporting configured
+- [ ] Performance profiled (startup < 2s)
+```
+
+---
+
+## 84. Claude Code for Testing at Scale
+
+### 84.1 Test Generation Strategy
+
+```
+"Analyze the codebase and generate a testing strategy:
+
+1. Map all modules and their dependencies
+2. Identify critical paths (auth, payments, data processing)
+3. For each critical path:
+   - Unit tests for individual functions
+   - Integration tests for module interactions
+   - E2E tests for user flows
+4. Estimate total test count needed for 80% coverage
+5. Prioritize: critical paths first, then edge cases
+6. Generate tests in priority order, running after each batch"
+```
+
+### 84.2 Property-Based Testing
+
+```
+"Write property-based tests for the price calculator:
+- For any valid input, output must be non-negative
+- Discount can never exceed original price
+- Tax calculation must be commutative with discounts
+- Rounding must never lose more than 1 cent
+- Total must equal subtotal + tax - discount
+Use fast-check library. Generate 1000 random inputs per property."
+```
+
+### 84.3 Snapshot Testing for APIs
+
+```
+"Create API snapshot tests:
+1. For each endpoint in src/routes/:
+   - Call with valid input → snapshot the response shape
+   - Call with invalid input → snapshot the error format
+   - Call without auth → snapshot the 401 response
+2. Store snapshots in tests/__snapshots__/
+3. On future runs, compare against snapshots
+4. Flag any response shape changes as potential breaking changes"
+```
+
+### 84.4 Load Testing Script Generator
+
+```yaml
+---
+name: load-test
+description: Generate and run load tests for API endpoints
+disable-model-invocation: true
+---
+Generate load tests for: $ARGUMENTS
+
+1. Identify the target endpoints
+2. Generate a k6 or Artillery load test script:
+   - Ramp up: 0 → 100 users over 2 minutes
+   - Sustained: 100 users for 5 minutes
+   - Ramp down: 100 → 0 users over 1 minute
+3. Define success criteria:
+   - p95 response time < 500ms
+   - Error rate < 1%
+   - No 5xx errors
+4. Run the test and analyze results
+5. Identify bottlenecks from the results
+6. Suggest optimizations
+```
+
+---
+
+## 85. Version History & Changelog
+
+### Tutorial Version History
+
+| Date | Version | Changes |
+|------|---------|---------|
+| 2026-03-16 | 1.0 | Initial release: 15 chapters, installation through monetization |
+| 2026-03-16 | 2.0 | Added sandboxing, agent teams, plugins deep-dive (22 chapters) |
+| 2026-03-16 | 3.0 | Added model config, permissions, scheduled tasks (31 chapters) |
+| 2026-03-16 | 4.0 | Added web sessions, remote control, Chrome, Slack (42 chapters) |
+| 2026-03-16 | 5.0 | Added enterprise, env vars, glossary, Desktop, VS Code (50 chapters) |
+| 2026-03-16 | 6.0 | Added custom MCP, Agent SDK, performance, multi-repo (60 chapters) |
+| 2026-03-16 | 7.0 | Added networking, privacy, automation cookbook, org scaling (73 chapters) |
+| 2026-03-16 | 8.0 | Added industry guides, developer tools, DevOps, data engineering (85 chapters) |
+
+### Claude Code Version Compatibility
+
+This tutorial is written for Claude Code v2.1.x (March 2026) with:
+- Models: Opus 4.6, Sonnet 4.6, Haiku 4.5
+- 200K default context, 1M extended context
+- Agent teams (experimental)
+- Code Review (preview)
+- Web sessions (preview)
+
+---
+
+> **This is the most comprehensive Claude Code tutorial available — 85 chapters, 7,000+ lines covering every feature, pattern, and monetization scenario.**
 >
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
