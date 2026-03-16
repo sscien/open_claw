@@ -67,6 +67,9 @@
 58. [CI/CD Pipeline Patterns](#58-cicd-pipeline-patterns)
 59. [Domain-Specific Skill Libraries](#59-domain-specific-skill-libraries)
 60. [Collaboration Patterns](#60-collaboration-patterns)
+61. [Language-Specific Guides](#61-language-specific-guides)
+62. [Common Anti-Patterns & How to Fix Them](#62-common-anti-patterns--how-to-fix-them)
+63. [Frequently Asked Questions](#63-frequently-asked-questions)
 
 ---
 
@@ -4784,11 +4787,257 @@ Let's start with the checkout endpoint."
 
 ---
 
+## 61. Language-Specific Guides
+
+### 61.1 TypeScript / JavaScript
+
+```markdown
+# CLAUDE.md additions for TypeScript projects
+- Use strict TypeScript (no `any`, no `@ts-ignore`)
+- Prefer `interface` over `type` for object shapes
+- Use `zod` for runtime validation at API boundaries
+- Named exports only (no default exports)
+- Run: `npx tsc --noEmit` to typecheck
+- Run: `npx vitest --run` for tests (not watch mode)
+- Prefer `const` assertions for literal types
+```
+
+**Recommended MCP servers**: GitHub, Playwright (browser testing)
+**Recommended plugins**: TypeScript code intelligence (LSP)
+**Best model**: Sonnet for daily work, Opus for complex type gymnastics
+
+### 61.2 Python
+
+```markdown
+# CLAUDE.md additions for Python projects
+- Python 3.12+, use modern syntax (match statements, type unions with |)
+- Type hints on all public functions
+- Use ruff for linting: `ruff check . --fix`
+- Use pytest: `pytest -x -q` (stop on first failure, quiet)
+- Use uv for package management: `uv pip install`
+- Prefer dataclasses or pydantic over plain dicts
+- Use pathlib over os.path
+```
+
+**Recommended MCP servers**: PostgreSQL, Jupyter
+**Recommended plugins**: Python code intelligence (Pyright LSP)
+**Best model**: Sonnet for most tasks, Opus for complex algorithms
+
+### 61.3 Rust
+
+```markdown
+# CLAUDE.md additions for Rust projects
+- Run: `cargo check` after changes (faster than full build)
+- Run: `cargo test` for tests
+- Run: `cargo clippy` for linting
+- Prefer `thiserror` for library errors, `anyhow` for application errors
+- Use `#[derive(Debug, Clone)]` on all public types
+- Prefer iterators over manual loops
+- Document public APIs with `///` doc comments
+```
+
+**Recommended plugins**: Rust code intelligence (rust-analyzer LSP)
+**Best model**: Opus for lifetime/borrow checker issues, Sonnet for everything else
+
+### 61.4 Go
+
+```markdown
+# CLAUDE.md additions for Go projects
+- Run: `go vet ./...` after changes
+- Run: `go test ./...` for tests
+- Run: `golangci-lint run` for linting
+- Use table-driven tests
+- Error handling: always check errors, wrap with fmt.Errorf("context: %w", err)
+- Prefer interfaces for testability
+- Use context.Context for cancellation and timeouts
+```
+
+**Recommended plugins**: Go code intelligence (gopls LSP)
+**Best model**: Sonnet for most tasks
+
+### 61.5 Java / Kotlin
+
+```markdown
+# CLAUDE.md additions for Java/Kotlin projects
+- Java 21+ with records, sealed classes, pattern matching
+- Run: `./gradlew build` or `mvn compile`
+- Run: `./gradlew test` or `mvn test`
+- Use Spring Boot conventions for web services
+- Prefer immutable objects
+- Use Optional instead of null returns
+- Kotlin: prefer data classes, use coroutines for async
+```
+
+**Best model**: Sonnet for implementation, Opus for architecture
+
+---
+
+## 62. Common Anti-Patterns & How to Fix Them
+
+### 62.1 The Context Explosion
+
+**Symptom**: Claude starts forgetting instructions, making mistakes it didn't make earlier.
+
+**Cause**: Context window is full of irrelevant file contents, failed attempts, and stale conversation.
+
+**Fix**:
+```
+/clear                              # Reset between tasks
+/compact Focus on the API changes   # Targeted compaction
+# Use sub-agents for research (keeps main context clean)
+# Use /btw for quick questions (doesn't enter history)
+```
+
+### 62.2 The Infinite Loop
+
+**Symptom**: Claude keeps trying the same approach that doesn't work.
+
+**Cause**: Context is polluted with failed attempts, Claude can't see a way out.
+
+**Fix**:
+```
+# After 2 failed attempts:
+Esc                    # Stop Claude
+/clear                 # Reset context
+# Write a better prompt incorporating what you learned:
+"The previous approach of X didn't work because Y.
+Instead, try Z. Specifically: [detailed instructions]"
+```
+
+### 62.3 The Over-Engineered Solution
+
+**Symptom**: Claude adds unnecessary abstractions, patterns, or features.
+
+**Cause**: Vague prompt that doesn't constrain scope.
+
+**Fix**:
+```
+# Bad
+"Add user authentication"
+
+# Good
+"Add JWT authentication to the /api/login endpoint.
+Use the existing User model. Store tokens in httpOnly cookies.
+Don't add OAuth, social login, or 2FA — just email/password.
+Follow the pattern in src/middleware/auth.ts."
+```
+
+### 62.4 The Wrong File Problem
+
+**Symptom**: Claude edits the wrong file or creates a new file instead of editing an existing one.
+
+**Cause**: Claude doesn't know your project structure well enough.
+
+**Fix**:
+```
+# Be explicit about file paths
+"Edit src/auth/login.ts (NOT src/auth/index.ts)"
+
+# Or use @-mentions
+"Fix the bug in @src/auth/login.ts"
+
+# Add architecture to CLAUDE.md
+"API routes: src/routes/
+Business logic: src/services/
+Database: src/db/repository.ts"
+```
+
+### 62.5 The Test Avoidance
+
+**Symptom**: Claude implements features without writing tests.
+
+**Cause**: No explicit instruction to test.
+
+**Fix**:
+```
+# Always include testing in your prompt
+"Implement the feature AND write tests. Run the tests.
+Fix any failures before considering the task complete."
+
+# Or add to CLAUDE.md
+"Always write tests for new code. Run tests after implementation.
+Minimum: happy path + one edge case + one error case."
+
+# Or use a hook to enforce
+# PostToolUse hook that runs tests after Edit/Write
+```
+
+### 62.6 The Stale Session
+
+**Symptom**: Claude references files or code that no longer exists.
+
+**Cause**: Long session where files changed externally.
+
+**Fix**:
+```
+/clear                    # Fresh start
+# Or ask Claude to re-read
+"Re-read src/auth/ — the files have changed since you last looked"
+```
+
+---
+
+## 63. Frequently Asked Questions
+
+### General
+
+**Q: How much does Claude Code cost?**
+A: Average ~$6/developer/day with Sonnet. ~$100-200/developer/month. Pro/Max subscribers have usage included. API users pay per token.
+
+**Q: Can I use Claude Code offline?**
+A: No, internet connection is required for API calls.
+
+**Q: Does Claude Code train on my code?**
+A: No. Your code is processed to provide assistance but is not used to train models.
+
+**Q: What models are available?**
+A: Opus 4.6 (complex reasoning), Sonnet 4.6 (daily coding), Haiku 4.5 (fast/simple). All support 200K context, Opus/Sonnet support 1M.
+
+**Q: Can I use my own API key?**
+A: Yes, via Anthropic Console, AWS Bedrock, Google Vertex AI, or Microsoft Foundry.
+
+### Features
+
+**Q: What's the difference between skills and hooks?**
+A: Skills are advisory (Claude decides how to use them). Hooks are deterministic (always execute, no LLM involved).
+
+**Q: Can Claude Code access the internet?**
+A: Yes, via WebFetch tool and MCP servers. Sandboxing can restrict network access.
+
+**Q: Can I use Claude Code in CI/CD?**
+A: Yes, via `claude -p` (headless mode), GitHub Actions, or GitLab CI/CD.
+
+**Q: How do I share Claude Code config with my team?**
+A: Commit `.claude/` directory (CLAUDE.md, skills, agents, settings.json) to git.
+
+**Q: Can Claude Code work with private repos?**
+A: Yes, it works with any repo you have access to locally or via GitHub.
+
+### Troubleshooting
+
+**Q: Claude isn't following my CLAUDE.md rules.**
+A: Check file is loaded (`/memory`), make rules more specific, check for conflicts, keep under 200 lines.
+
+**Q: Claude is slow.**
+A: Switch to Sonnet (`/model sonnet`), lower effort (`/effort low`), use Haiku for sub-agents.
+
+**Q: Context window is full.**
+A: `/compact`, `/clear`, use sub-agents, use `opus[1m]` or `sonnet[1m]` for 1M context.
+
+**Q: MCP server won't connect.**
+A: Check `/mcp`, verify URL, check auth, set `MCP_TIMEOUT=10000` for slow servers.
+
+**Q: How do I reset everything?**
+A: `rm -rf ~/.claude && rm ~/.claude.json` removes all settings. Reinstall with `curl -fsSL https://claude.ai/install.sh | bash`.
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
