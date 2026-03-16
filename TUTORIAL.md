@@ -96,6 +96,11 @@
 87. [Claude Code for API Development](#87-claude-code-for-api-development)
 88. [Claude Code for Machine Learning Projects](#88-claude-code-for-machine-learning-projects)
 89. [Claude Code Tips & Tricks](#89-claude-code-tips--tricks)
+90. [Claude Code for Documentation](#90-claude-code-for-documentation)
+91. [Claude Code for Security Engineering](#91-claude-code-for-security-engineering)
+92. [Claude Code for Team Productivity](#92-claude-code-for-team-productivity)
+93. [Claude Code Integration Patterns](#93-claude-code-integration-patterns)
+94. [The Future of AI-Assisted Development](#94-the-future-of-ai-assisted-development)
 
 ---
 
@@ -7501,12 +7506,381 @@ Ctrl+F (press twice to confirm)
 
 ---
 
-> **This is the most comprehensive Claude Code tutorial available — 89 chapters, 7,500+ lines covering every feature, pattern, and monetization scenario.**
+## 90. Claude Code for Documentation
+
+### 90.1 README Generator
+
+```yaml
+---
+name: generate-readme
+description: Generate a comprehensive README from the codebase
+disable-model-invocation: true
+---
+Generate a README.md for this project:
+
+1. Analyze package.json/pyproject.toml for project metadata
+2. Scan the codebase for key features
+3. Check existing docs/ for additional context
+
+Generate sections:
+- Project name and description (from package metadata)
+- Badges (build status, coverage, npm version)
+- Features list (from code analysis)
+- Quick start (install + run commands from package.json)
+- Configuration (from .env.example or config files)
+- API reference (from route files or exported functions)
+- Architecture overview (from directory structure)
+- Contributing guide (from CONTRIBUTING.md or generate one)
+- License (from LICENSE file)
+```
+
+### 90.2 JSDoc/Docstring Generator
+
+```
+"Add documentation to all public functions in src/services/:
+- JSDoc for TypeScript, docstrings for Python
+- Include: description, @param types and descriptions, @returns, @throws
+- Add @example with realistic usage
+- Follow existing documentation style in the codebase
+- Don't document private/internal functions
+- Run the doc generator to verify: npx typedoc"
+```
+
+### 90.3 Architecture Decision Records (ADR)
+
+```yaml
+---
+name: new-adr
+description: Create an Architecture Decision Record
+disable-model-invocation: true
+---
+Create ADR for: $ARGUMENTS
+
+Save to docs/adr/NNNN-$0.md (auto-increment number)
+
+## Template:
+# ADR-NNNN: [Title]
+
+## Status
+Proposed | Accepted | Deprecated | Superseded by ADR-XXXX
+
+## Context
+What is the issue that we're seeing that is motivating this decision?
+
+## Decision
+What is the change that we're proposing and/or doing?
+
+## Consequences
+What becomes easier or more difficult because of this change?
+
+## Alternatives Considered
+What other options were evaluated and why were they rejected?
+```
+
+### 90.4 API Documentation from Tests
+
+```
+"Generate API documentation from our test files:
+1. Read all test files in tests/api/
+2. Extract endpoint URLs, methods, and payloads from test cases
+3. Group by resource (users, products, orders)
+4. For each endpoint, document:
+   - Method and URL
+   - Request headers and body (from test fixtures)
+   - Response status and body (from assertions)
+   - Authentication requirements
+   - Example curl command
+5. Save as docs/api-reference.md"
+```
+
+---
+
+## 91. Claude Code for Security Engineering
+
+### 91.1 Security Audit Skill
+
+```yaml
+---
+name: security-audit
+description: Comprehensive security audit of the codebase
+disable-model-invocation: true
+---
+Run a comprehensive security audit:
+
+## 1. Dependency Vulnerabilities
+- !`npm audit --json 2>/dev/null | head -100`
+- Check for known CVEs in dependencies
+
+## 2. Code Vulnerabilities (OWASP Top 10)
+Scan for:
+- A01: Broken Access Control (missing auth checks)
+- A02: Cryptographic Failures (weak hashing, plaintext secrets)
+- A03: Injection (SQL, NoSQL, OS command, LDAP)
+- A04: Insecure Design (missing rate limiting, no CSRF protection)
+- A05: Security Misconfiguration (debug mode, default credentials)
+- A06: Vulnerable Components (outdated libraries)
+- A07: Authentication Failures (weak passwords, no MFA)
+- A08: Data Integrity Failures (unsigned data, insecure deserialization)
+- A09: Logging Failures (missing audit logs, PII in logs)
+- A10: SSRF (unvalidated URLs in server-side requests)
+
+## 3. Secret Detection
+- Scan for hardcoded API keys, passwords, tokens
+- Check .env files are gitignored
+- Verify no secrets in git history
+
+## 4. Report
+Generate a security report with:
+- Executive summary
+- Critical findings (must fix immediately)
+- High findings (fix within 1 week)
+- Medium findings (fix within 1 month)
+- Low findings (fix when convenient)
+- Remediation steps for each finding
+```
+
+### 91.2 Penetration Testing Assistance
+
+```
+"Help me test the authentication system:
+1. Check for common auth vulnerabilities:
+   - Brute force protection (rate limiting)
+   - Password reset flow security
+   - Session fixation
+   - JWT token validation (algorithm confusion, expiry)
+   - CORS configuration
+2. Write test cases that verify each protection
+3. Run the tests and report findings
+4. For any failures, suggest fixes"
+```
+
+### 91.3 Compliance Scanning
+
+```yaml
+---
+name: compliance-scan
+description: Scan code for regulatory compliance issues
+---
+Scan for compliance issues based on: $ARGUMENTS
+
+## GDPR
+- [ ] Personal data processing has legal basis
+- [ ] Data deletion/export endpoints exist
+- [ ] Consent management implemented
+- [ ] Data processing records maintained
+- [ ] Privacy policy referenced in code
+
+## SOC 2
+- [ ] Access controls implemented
+- [ ] Audit logging enabled
+- [ ] Encryption at rest and in transit
+- [ ] Change management process followed
+- [ ] Incident response procedures documented
+
+## PCI-DSS (if handling payments)
+- [ ] Card data never stored in plaintext
+- [ ] TLS 1.2+ for all transmissions
+- [ ] Access restricted to need-to-know
+- [ ] Regular vulnerability scanning
+- [ ] Strong authentication for admin access
+```
+
+---
+
+## 92. Claude Code for Team Productivity
+
+### 92.1 Onboarding New Developers
+
+```
+"I'm a new developer joining this project. Help me get started:
+1. What does this project do? (high-level overview)
+2. What's the tech stack?
+3. How do I set up my development environment?
+4. What are the key directories and their purposes?
+5. What are the coding conventions?
+6. How do I run tests?
+7. How do I create a PR?
+8. Who should I ask about different parts of the codebase?
+9. What are the most common gotchas?"
+```
+
+### 92.2 Knowledge Transfer Skill
+
+```yaml
+---
+name: knowledge-transfer
+description: Generate knowledge transfer documentation for a module
+disable-model-invocation: true
+---
+Generate knowledge transfer docs for: $ARGUMENTS
+
+1. **Overview**: What does this module do and why does it exist?
+2. **Architecture**: How is it structured? Key classes/functions?
+3. **Data Flow**: How does data move through the module?
+4. **Dependencies**: What does it depend on? What depends on it?
+5. **Configuration**: What environment variables or config does it need?
+6. **Common Tasks**: How to add a feature, fix a bug, deploy changes
+7. **Gotchas**: Non-obvious behaviors, known issues, tech debt
+8. **Testing**: How to test changes, what to watch for
+9. **Monitoring**: What to monitor, common alerts, runbooks
+10. **History**: Why key decisions were made (check git blame)
+```
+
+### 92.3 Sprint Planning Assistant
+
+```
+"Help me plan the next sprint:
+1. Review open issues labeled 'ready-for-sprint'
+2. Estimate complexity for each (S/M/L/XL)
+3. Group by theme (feature, bug, tech-debt, infra)
+4. Suggest a sprint goal based on the highest-priority items
+5. Recommend which issues to include (assuming 2-week sprint, 3 devs)
+6. Identify dependencies between issues
+7. Flag any blockers or risks"
+```
+
+### 92.4 Code Ownership Analyzer
+
+```
+"Analyze code ownership in this repository:
+1. For each directory in src/, identify the primary contributor
+   (most commits in last 6 months)
+2. Identify 'bus factor' risks (directories with only 1 contributor)
+3. Identify abandoned areas (no commits in 3+ months)
+4. Suggest code review assignments based on expertise
+5. Generate a CODEOWNERS file"
+```
+
+---
+
+## 93. Claude Code Integration Patterns
+
+### 93.1 Webhook-Driven Automation
+
+```typescript
+// Trigger Claude Code from any webhook
+import express from "express";
+import { execSync } from "child_process";
+
+const app = express();
+app.use(express.json());
+
+// Sentry error → auto-fix
+app.post("/sentry-webhook", (req, res) => {
+  const { title, culprit } = req.body;
+  execSync(`claude -p "Fix this Sentry error: ${title} in ${culprit}" \
+    --allowedTools "Read,Edit,Bash(npm test *)" --max-turns 10`);
+  res.sendStatus(200);
+});
+
+// Slack message → code task
+app.post("/slack-webhook", (req, res) => {
+  const { text } = req.body.event;
+  if (text.includes("@claude")) {
+    const task = text.replace("@claude", "").trim();
+    execSync(`claude --remote "${task}"`);
+  }
+  res.sendStatus(200);
+});
+
+// PagerDuty alert → incident response
+app.post("/pagerduty-webhook", (req, res) => {
+  const { title } = req.body.messages[0].incident;
+  execSync(`claude -p "Investigate incident: ${title}. Check logs, recent deploys, and metrics." \
+    --allowedTools "Read,Grep,Bash" --max-turns 15`);
+  res.sendStatus(200);
+});
+```
+
+### 93.2 Cron-Based Automation
+
+```bash
+# crontab entries for Claude Code automation
+
+# Daily code quality report at 9am
+0 9 * * * cd /path/to/project && claude -p "Generate daily code quality report" --max-turns 10 > /tmp/quality-report.md
+
+# Weekly dependency check on Mondays
+0 10 * * 1 cd /path/to/project && claude -p "Check for outdated dependencies and security vulnerabilities" --max-turns 15
+
+# Nightly test suite with AI analysis
+0 2 * * * cd /path/to/project && npm test 2>&1 | claude -p "Analyze test results. If failures, identify root cause and suggest fixes." --max-turns 5
+
+# Monthly architecture review
+0 9 1 * * cd /path/to/project && claude -p "Review the codebase architecture. Identify areas of concern, tech debt, and improvement opportunities." --max-turns 20 > /tmp/arch-review.md
+```
+
+### 93.3 IDE Extension Integration
+
+```json
+// .vscode/tasks.json — VS Code tasks that use Claude Code
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Claude: Review Current File",
+      "type": "shell",
+      "command": "claude -p 'Review ${file} for bugs and improvements' --allowedTools Read --max-turns 3"
+    },
+    {
+      "label": "Claude: Generate Tests",
+      "type": "shell",
+      "command": "claude -p 'Write tests for ${file}' --allowedTools 'Read,Write,Bash' --max-turns 10"
+    },
+    {
+      "label": "Claude: Explain Selection",
+      "type": "shell",
+      "command": "echo '${selectedText}' | claude -p 'Explain this code in detail'"
+    }
+  ]
+}
+```
+
+---
+
+## 94. The Future of AI-Assisted Development
+
+### 94.1 Current State (March 2026)
+
+Claude Code represents the current frontier of AI-assisted development:
+- Full codebase understanding and multi-file editing
+- Autonomous task completion with verification
+- Multi-agent coordination for complex tasks
+- Integration with every major development tool
+- Enterprise-ready security and compliance
+
+### 94.2 Emerging Patterns
+
+| Pattern | Description | Status |
+|---------|-------------|--------|
+| **Agent Teams** | Multiple AI agents collaborating on tasks | Experimental |
+| **Persistent Memory** | AI that learns your codebase over time | Stable (auto memory) |
+| **Visual Development** | Build from screenshots and designs | Beta (Chrome extension) |
+| **Cross-Device** | Start on desktop, continue on phone | Stable (Remote Control) |
+| **Cloud Execution** | Run tasks without local setup | Preview (Web sessions) |
+| **Automated Review** | AI reviews every PR automatically | Preview (Code Review) |
+
+### 94.3 Building for the Future
+
+To stay ahead as AI-assisted development evolves:
+
+1. **Invest in CLAUDE.md** — Your project documentation becomes your competitive advantage
+2. **Build reusable skills** — Workflows that work today will work better tomorrow
+3. **Embrace MCP** — The open standard for AI-tool integration
+4. **Create plugins** — Package your expertise for distribution
+5. **Automate CI/CD** — Let AI handle the repetitive parts
+6. **Focus on architecture** — AI handles implementation; you handle design
+7. **Build verification** — Tests and checks that let AI work autonomously
+
+---
+
+> **This is the most comprehensive Claude Code tutorial available — 94 chapters, 8,000+ lines covering every feature, pattern, and monetization scenario.**
 >
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
