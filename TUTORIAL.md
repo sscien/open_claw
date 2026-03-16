@@ -22,6 +22,10 @@
 13. [Advanced Patterns](#13-advanced-patterns)
 14. [Monetization Scenarios](#14-monetization-scenarios--making-money-with-claude-code)
 15. [Best Practices Cheat Sheet](#15-best-practices-cheat-sheet)
+16. [Sandboxing — OS-Level Security](#16-sandboxing--os-level-security)
+17. [Agent Teams — Multi-Agent Coordination](#17-agent-teams--multi-agent-coordination-experimental)
+18. [Creating & Distributing Plugins (Deep Dive)](#18-creating--distributing-plugins-deep-dive)
+19. [Cross-Surface Workflows](#19-cross-surface-workflows)
 
 ---
 
@@ -1523,9 +1527,327 @@ EOF
 
 ---
 
+## 16. Sandboxing — OS-Level Security
+
+Sandboxing creates defined boundaries where Claude Code can work freely with reduced risk, using OS-level primitives for filesystem and network isolation.
+
+### 16.1 Why Sandboxing?
+
+| Problem | Solution |
+|---------|----------|
+| Approval fatigue (clicking "approve" repeatedly) | Safe commands auto-approved inside sandbox |
+| Prompt injection risk | OS-level enforcement blocks unauthorized access |
+| Malicious dependencies | Child processes inherit sandbox restrictions |
+
+### 16.2 Enable Sandboxing
+
+```
+/sandbox
+```
+
+**Two modes:**
+- **Auto-allow**: Sandboxed commands run without permission prompts. Non-sandboxable commands fall back to normal flow.
+- **Regular permissions**: All commands go through standard approval, but sandbox still enforces filesystem/network restrictions.
+
+### 16.3 How It Works
+
+**Filesystem isolation:**
+- Read/write access to current working directory (default)
+- Blocked from modifying files outside the project
+- Configurable allowed/denied paths
+- Enforced via Seatbelt (macOS) or bubblewrap (Linux/WSL2)
+
+**Network isolation:**
+- Only approved domains accessible
+- New domain requests trigger permission prompts
+- All subprocesses inherit restrictions
+
+### 16.4 Configuration
+
+```json
+{
+  "sandbox": {
+    "enabled": true,
+    "filesystem": {
+      "allowWrite": ["~/.kube", "//tmp/build"]
+    }
+  }
+}
+```
+
+**Path prefixes:**
+| Prefix | Meaning | Example |
+|--------|---------|---------|
+| `//` | Absolute from root | `//tmp/build` → `/tmp/build` |
+| `~/` | Home directory | `~/.kube` → `$HOME/.kube` |
+| `/` | Relative to settings file | `/build` → `$SETTINGS_DIR/build` |
+
+### 16.5 Protection Against Prompt Injection
+
+Even if an attacker manipulates Claude's behavior:
+- Cannot modify `~/.bashrc`, `/bin/`, or system files
+- Cannot exfiltrate data to unauthorized servers
+- Cannot download malicious scripts
+- All violations blocked at OS level with immediate notification
+
+### 16.6 Open Source Sandbox Runtime
+
+The sandbox is available as an npm package for your own agent projects:
+```bash
+npx @anthropic-ai/sandbox-runtime <command-to-sandbox>
+```
+
+---
+
+## 17. Agent Teams — Multi-Agent Coordination (Experimental)
+
+> ⚠️ Agent teams are experimental. Enable with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in settings.
+
+Agent teams let you coordinate multiple Claude Code instances working together. One session acts as team lead, coordinating work and synthesizing results. Teammates work independently, each in its own context window, and communicate directly with each other.
+
+### 17.1 When to Use Agent Teams vs. Sub-Agents
+
+| | Sub-Agents | Agent Teams |
+|---|---|---|
+| **Context** | Own window; results return to caller | Own window; fully independent |
+| **Communication** | Report back to main agent only | Teammates message each other directly |
+| **Coordination** | Main agent manages all work | Shared task list with self-coordination |
+| **Best for** | Focused tasks where only the result matters | Complex work requiring discussion |
+| **Token cost** | Lower | Higher (each teammate = separate instance) |
+
+### 17.2 Start a Team
+
+```
+I'm designing a CLI tool for tracking TODOs. Create an agent team:
+- One teammate on UX
+- One on technical architecture
+- One playing devil's advocate
+```
+
+Claude creates the team, spawns teammates, and coordinates work.
+
+### 17.3 Display Modes
+
+- **In-process** (default): All teammates in your terminal. `Shift+Down` to cycle between them.
+- **Split panes**: Each teammate gets its own pane (requires tmux or iTerm2).
+
+```json
+{ "teammateMode": "in-process" }
+```
+
+### 17.4 Team Architecture
+
+| Component | Role |
+|-----------|------|
+| **Team lead** | Creates team, spawns teammates, coordinates |
+| **Teammates** | Separate Claude instances working on tasks |
+| **Task list** | Shared work items teammates claim and complete |
+| **Mailbox** | Messaging system between agents |
+
+### 17.5 Use Case: Parallel Code Review
+
+```
+Create an agent team to review PR #142. Spawn three reviewers:
+- One focused on security implications
+- One checking performance impact
+- One validating test coverage
+Have them each review and report findings.
+```
+
+### 17.6 Use Case: Competing Hypotheses Debugging
+
+```
+Users report the app exits after one message. Spawn 5 teammates to
+investigate different hypotheses. Have them debate and try to disprove
+each other's theories. Update findings with whatever consensus emerges.
+```
+
+### 17.7 Quality Gates with Hooks
+
+```json
+{
+  "hooks": {
+    "TaskCompleted": [{
+      "hooks": [{
+        "type": "command",
+        "command": "./scripts/verify-task.sh"
+      }]
+    }]
+  }
+}
+```
+
+Exit code 2 prevents task completion and sends feedback.
+
+### 17.8 Best Practices
+
+- Start with 3-5 teammates (diminishing returns beyond that)
+- 5-6 tasks per teammate keeps everyone productive
+- Break work so each teammate owns different files (avoid conflicts)
+- Start with research/review tasks before parallel implementation
+- Monitor and steer — don't let teams run unattended too long
+
+---
+
+## 18. Creating & Distributing Plugins (Deep Dive)
+
+Plugins bundle skills, hooks, sub-agents, MCP servers, and LSP servers into a single installable unit.
+
+### 18.1 Plugin Directory Structure
+
+```
+my-plugin/
+├── .claude-plugin/
+│   └── plugin.json        # Manifest (ONLY this goes here)
+├── skills/                 # Agent Skills with SKILL.md
+│   └── code-review/
+│       └── SKILL.md
+├── commands/               # Slash commands as Markdown
+│   └── deploy.md
+├── agents/                 # Custom sub-agent definitions
+│   └── security-reviewer.md
+├── hooks/
+│   └── hooks.json          # Event handlers
+├── .mcp.json               # MCP server configurations
+├── .lsp.json               # LSP server configurations
+├── settings.json           # Default settings when plugin enabled
+└── README.md
+```
+
+### 18.2 Create a Plugin Step-by-Step
+
+```bash
+# 1. Create structure
+mkdir -p my-plugin/.claude-plugin
+mkdir -p my-plugin/skills/code-review
+
+# 2. Create manifest
+cat > my-plugin/.claude-plugin/plugin.json << 'EOF'
+{
+  "name": "my-plugin",
+  "description": "Code quality tools for teams",
+  "version": "1.0.0",
+  "author": { "name": "Your Name" }
+}
+EOF
+
+# 3. Add a skill
+cat > my-plugin/skills/code-review/SKILL.md << 'EOF'
+---
+name: code-review
+description: Reviews code for best practices and security issues
+---
+When reviewing code, check for:
+1. Code organization and structure
+2. Error handling and edge cases
+3. Security concerns (OWASP Top 10)
+4. Test coverage gaps
+EOF
+
+# 4. Test locally
+claude --plugin-dir ./my-plugin
+# Then: /my-plugin:code-review
+```
+
+### 18.3 Add LSP Servers (Code Intelligence)
+
+```json
+// .lsp.json
+{
+  "go": {
+    "command": "gopls",
+    "args": ["serve"],
+    "extensionToLanguage": { ".go": "go" }
+  }
+}
+```
+
+### 18.4 Ship Default Settings
+
+```json
+// settings.json — activates a custom agent as main thread
+{ "agent": "security-reviewer" }
+```
+
+### 18.5 Standalone vs. Plugin
+
+| Standalone (`.claude/`) | Plugin |
+|---|---|
+| `/hello` (short names) | `/plugin-name:hello` (namespaced) |
+| One project only | Shareable via marketplaces |
+| Quick experiments | Versioned releases |
+
+### 18.6 Convert Standalone to Plugin
+
+```bash
+mkdir -p my-plugin/.claude-plugin
+# Create plugin.json manifest
+cp -r .claude/commands my-plugin/
+cp -r .claude/agents my-plugin/
+cp -r .claude/skills my-plugin/
+# Test: claude --plugin-dir ./my-plugin
+```
+
+### 18.7 Distribute Your Plugin
+
+1. Push to a GitHub repo
+2. Create a marketplace or use the official one
+3. Submit at [claude.ai/settings/plugins/submit](https://claude.ai/settings/plugins/submit)
+4. Users install with `/plugin install`
+
+---
+
+## 19. Cross-Surface Workflows
+
+Claude Code works across every surface — and sessions aren't tied to one.
+
+### 19.1 Surface Comparison
+
+| Surface | Strengths | Best For |
+|---------|-----------|----------|
+| **Terminal CLI** | Full power, scripting, CI/CD | Daily development |
+| **VS Code / Cursor** | Inline diffs, @-mentions | IDE-centric workflows |
+| **JetBrains** | IntelliJ, PyCharm, WebStorm | Java/Python/Web dev |
+| **Desktop App** | Visual diffs, multi-session, scheduling | Review & management |
+| **Web** | No setup, long-running, mobile | Remote work, parallel tasks |
+| **Slack** | Team integration | Bug reports → PRs |
+| **Chrome** | Live web debugging | Frontend testing |
+
+### 19.2 Handoff Patterns
+
+```bash
+# Terminal → Desktop (visual diff review)
+/desktop
+
+# Web → Terminal (pull cloud session locally)
+/teleport
+
+# Any device → Phone (continue from mobile)
+# Use Remote Control feature
+
+# Slack → PR (team workflow)
+# @Claude in Slack: "Fix the login bug described in issue #42"
+```
+
+### 19.3 Multi-Session Strategies
+
+| Strategy | How |
+|----------|-----|
+| **Writer/Reviewer** | Session A writes code, Session B reviews with fresh context |
+| **Test-First** | Session A writes tests, Session B implements to pass them |
+| **Parallel Research** | Multiple sessions investigate different aspects |
+| **Desktop App** | Manage multiple local sessions visually |
+| **Web Sessions** | Run on Anthropic's cloud in isolated VMs |
+| **Agent Teams** | Automated coordination with shared tasks |
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
+
+
 
 
 

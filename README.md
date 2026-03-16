@@ -15,7 +15,12 @@ See [TUTORIAL.md](TUTORIAL.md) for the full tutorial.
 - **Plugins** — Package and distribute extensions
 - **GitHub Actions** — CI/CD automation with Claude
 - **Agent SDK** — Build custom agents programmatically
+- **Sandboxing** — OS-level filesystem and network isolation
+- **Agent Teams** — Multi-agent coordination (experimental)
+- **Cross-Surface Workflows** — Terminal, VS Code, Desktop, Web, Slack, Chrome
 - **Monetization Scenarios** — 12+ ways to make money with Claude Code
+
+## 19 Chapters | 1,700+ Lines | Continuously Updated
 
 ## Quick Start
 
