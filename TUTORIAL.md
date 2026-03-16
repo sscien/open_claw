@@ -44,6 +44,9 @@
 35. [Slack Integration — Team Workflows](#35-slack-integration--team-workflows)
 36. [GitLab CI/CD Integration](#36-gitlab-cicd-integration)
 37. [Automated Code Review (Teams/Enterprise)](#37-automated-code-review-teamsenterprise)
+38. [Enterprise Deployment Guide](#38-enterprise-deployment-guide)
+39. [Environment Variables Reference](#39-environment-variables-reference)
+40. [Glossary](#40-glossary)
 
 ---
 
@@ -2927,9 +2930,199 @@ Comment `@claude review` on any PR to start a review and opt that PR into push-t
 
 ---
 
+## 38. Enterprise Deployment Guide
+
+### 38.1 Authentication Options
+
+| Method | Best For |
+|--------|----------|
+| **Claude.ai (OAuth)** | Pro, Max, Teams, Enterprise — browser login |
+| **API Key (Console)** | Pay-as-you-go, CI/CD, automation |
+| **Amazon Bedrock** | AWS-native, data residency, existing contracts |
+| **Google Vertex AI** | GCP-native, Workload Identity Federation |
+| **Microsoft Foundry** | Azure-native deployments |
+
+### 38.2 Managed Settings (IT Admin)
+
+Deploy organization-wide policies that users cannot override:
+
+**File locations:**
+- macOS: `/Library/Application Support/ClaudeCode/managed-settings.json`
+- Linux/WSL: `/etc/claude-code/managed-settings.json`
+- Windows: `C:\Program Files\ClaudeCode\managed-settings.json`
+
+```json
+{
+  "permissions": {
+    "deny": ["Bash(rm -rf *)", "Bash(git push --force *)"],
+    "defaultMode": "default"
+  },
+  "disableBypassPermissionsMode": "disable",
+  "allowManagedPermissionRulesOnly": true,
+  "allowManagedHooksOnly": true,
+  "availableModels": ["sonnet", "haiku"],
+  "model": "sonnet"
+}
+```
+
+### 38.3 Managed-Only Settings
+
+| Setting | Description |
+|---------|-------------|
+| `disableBypassPermissionsMode` | Prevent `--dangerously-skip-permissions` |
+| `allowManagedPermissionRulesOnly` | Only managed permission rules apply |
+| `allowManagedHooksOnly` | Only managed hooks are allowed |
+| `allowManagedMcpServersOnly` | Only managed MCP servers allowed |
+| `blockedMarketplaces` | Block specific plugin marketplaces |
+| `allow_remote_sessions` | Control Remote Control access |
+
+### 38.4 Managed CLAUDE.md
+
+Organization-wide instructions all users must follow:
+
+- macOS: `/Library/Application Support/ClaudeCode/CLAUDE.md`
+- Linux/WSL: `/etc/claude-code/CLAUDE.md`
+- Windows: `C:\Program Files\ClaudeCode\CLAUDE.md`
+
+Cannot be excluded by individual settings.
+
+### 38.5 Managed MCP Configuration
+
+Lock down MCP servers organization-wide:
+
+```json
+// managed-mcp.json (same system directories as managed-settings)
+{
+  "mcpServers": {
+    "company-internal": {
+      "type": "stdio",
+      "command": "/usr/local/bin/company-mcp-server",
+      "args": ["--config", "/etc/company/mcp-config.json"]
+    }
+  }
+}
+```
+
+Users cannot add, modify, or use any MCP servers other than those defined here.
+
+### 38.6 Model Pinning for Third-Party Providers
+
+```bash
+# Pin specific versions to prevent breakage on updates
+export ANTHROPIC_DEFAULT_OPUS_MODEL='us.anthropic.claude-opus-4-6-v1'
+export ANTHROPIC_DEFAULT_SONNET_MODEL='us.anthropic.claude-sonnet-4-6-v1'
+export ANTHROPIC_DEFAULT_HAIKU_MODEL='us.anthropic.claude-haiku-4-5-v1'
+```
+
+### 38.7 Restrict Model Selection
+
+```json
+{ "availableModels": ["sonnet", "haiku"] }
+```
+
+Users cannot switch to models not in this list.
+
+---
+
+## 39. Environment Variables Reference
+
+### 39.1 Core Variables
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | API key for authentication |
+| `ANTHROPIC_MODEL` | Default model (alias or full name) |
+| `CLAUDE_CODE_EFFORT_LEVEL` | Effort level: low/medium/high/max/auto |
+| `MAX_THINKING_TOKENS` | Limit thinking token budget (0 = disable) |
+
+### 39.2 Model Override Variables
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | Model for `opus` alias |
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | Model for `sonnet` alias |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Model for `haiku` alias |
+| `CLAUDE_CODE_SUBAGENT_MODEL` | Model for sub-agents |
+
+### 39.3 Feature Flags
+
+| Variable | Description |
+|----------|-------------|
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | Enable agent teams (set to `1`) |
+| `CLAUDE_CODE_DISABLE_AUTO_MEMORY` | Disable auto memory (set to `1`) |
+| `CLAUDE_CODE_DISABLE_CRON` | Disable scheduled tasks (set to `1`) |
+| `CLAUDE_CODE_DISABLE_1M_CONTEXT` | Disable 1M context variants |
+| `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` | Revert to fixed thinking budget |
+| `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS` | Disable background task functionality |
+| `DISABLE_AUTOUPDATER` | Disable auto-updates (set to `1`) |
+
+### 39.4 MCP & Tool Variables
+
+| Variable | Description |
+|----------|-------------|
+| `MCP_TIMEOUT` | MCP server startup timeout (ms) |
+| `MAX_MCP_OUTPUT_TOKENS` | Max tokens for MCP tool output (default: 25000) |
+| `ENABLE_TOOL_SEARCH` | Tool search: true/false/auto/auto:N |
+| `ENABLE_CLAUDEAI_MCP_SERVERS` | Enable claude.ai MCP servers (true/false) |
+
+### 39.5 Prompt Caching
+
+| Variable | Description |
+|----------|-------------|
+| `DISABLE_PROMPT_CACHING` | Disable for all models (set to `1`) |
+| `DISABLE_PROMPT_CACHING_HAIKU` | Disable for Haiku only |
+| `DISABLE_PROMPT_CACHING_SONNET` | Disable for Sonnet only |
+| `DISABLE_PROMPT_CACHING_OPUS` | Disable for Opus only |
+
+### 39.6 Third-Party Provider Variables
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_BASE_URL` | Custom API base URL |
+| `CLAUDE_CODE_USE_BEDROCK` | Use AWS Bedrock (set to `1`) |
+| `CLAUDE_CODE_USE_VERTEX` | Use Google Vertex AI (set to `1`) |
+| `ANTHROPIC_VERTEX_PROJECT_ID` | GCP project ID for Vertex |
+| `CLOUD_ML_REGION` | Vertex AI region |
+
+---
+
+## 40. Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Agent SDK** | Python/TypeScript packages for programmatic Claude Code control |
+| **Auto memory** | Notes Claude writes itself across sessions (~/.claude/projects/) |
+| **CLAUDE.md** | Markdown file with persistent instructions loaded every session |
+| **Checkpoint** | Automatic snapshot of code state before each edit |
+| **Compaction** | Summarizing conversation history to free context space |
+| **Context window** | Total token capacity for conversation (200K default, 1M extended) |
+| **Effort level** | Controls adaptive reasoning depth (low/medium/high/max) |
+| **Extended thinking** | Claude's internal reasoning before responding |
+| **Hook** | Shell command/HTTP/prompt/agent that runs at lifecycle events |
+| **MCP** | Model Context Protocol — open standard for AI-tool integrations |
+| **MCP server** | External tool connected via MCP (GitHub, Notion, databases, etc.) |
+| **opusplan** | Model alias: Opus for planning, Sonnet for execution |
+| **Permission mode** | Controls how tool usage is approved (default/acceptEdits/plan/etc.) |
+| **Plan Mode** | Read-only exploration mode for research before implementation |
+| **Plugin** | Bundled package of skills, agents, hooks, MCP, and LSP servers |
+| **Remote Control** | Continue local sessions from phone/browser via claude.ai |
+| **REVIEW.md** | Review-only guidance for automated code review |
+| **Sandboxing** | OS-level filesystem and network isolation for Bash commands |
+| **Skill** | Reusable AI workflow defined in SKILL.md, invoked with /name |
+| **Status line** | Customizable bar showing context usage, costs, git status |
+| **Sub-agent** | Specialized AI assistant running in its own context window |
+| **Agent team** | Multiple Claude instances coordinating via shared task list |
+| **Teleport** | Pull a web session into your local terminal (/teleport) |
+| **Tool search** | On-demand MCP tool loading when many servers are configured |
+| **ultrathink** | Keyword to enable deep reasoning for a single turn |
+| **Worktree** | Isolated git working directory for parallel sessions |
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
