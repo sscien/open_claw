@@ -73,6 +73,9 @@
 64. [Enterprise Networking & Proxy Configuration](#64-enterprise-networking--proxy-configuration)
 65. [Data Privacy & Compliance](#65-data-privacy--compliance)
 66. [Deployment Comparison Guide](#66-deployment-comparison-guide)
+67. [Automation Cookbook — Production-Ready Scripts](#67-automation-cookbook--production-ready-scripts)
+68. [Building a Claude Code Plugin — Complete Walkthrough](#68-building-a-claude-code-plugin--complete-walkthrough)
+69. [Scaling Claude Code Across an Organization](#69-scaling-claude-code-across-an-organization)
 
 ---
 
@@ -5227,11 +5230,360 @@ export ANTHROPIC_FOUNDRY_API_KEY=your-api-key
 
 ---
 
+## 67. Automation Cookbook — Production-Ready Scripts
+
+### 67.1 Daily Standup Generator
+
+```bash
+#!/bin/bash
+# scripts/standup.sh — Generate standup from git activity
+YESTERDAY=$(date -v-1d +%Y-%m-%d 2>/dev/null || date -d "yesterday" +%Y-%m-%d)
+
+git log --since="$YESTERDAY" --author="$(git config user.name)" --oneline | \
+  claude -p "Generate a standup update from these commits:
+  - What I did yesterday (group by feature/area)
+  - What I'm doing today (infer from in-progress work)
+  - Any blockers (mention if commits show debugging or reverts)
+  Keep it concise, 3-5 bullet points per section." \
+  --output-format text
+```
+
+### 67.2 Automated Changelog Generator
+
+```bash
+#!/bin/bash
+# scripts/changelog.sh — Generate changelog between tags
+PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null)
+CURR_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "HEAD")
+
+git log --oneline ${PREV_TAG}..${CURR_TAG} | \
+  claude -p "Generate a changelog for $CURR_TAG.
+  Categories: Added, Changed, Fixed, Removed, Security.
+  Format as Keep a Changelog (keepachangelog.com).
+  Only include user-facing changes, skip internal refactors." \
+  --output-format text > CHANGELOG_NEW.md
+
+echo "Changelog written to CHANGELOG_NEW.md"
+```
+
+### 67.3 Dependency Vulnerability Scanner
+
+```bash
+#!/bin/bash
+# scripts/vuln-scan.sh — AI-enhanced vulnerability analysis
+npm audit --json 2>/dev/null | \
+  claude -p "Analyze these npm audit results:
+  1. List critical and high vulnerabilities
+  2. For each, explain the actual risk in our context
+  3. Suggest specific fix (upgrade path or alternative package)
+  4. Prioritize by exploitability, not just CVSS score
+  Return as markdown table: Package | Severity | Risk | Fix" \
+  --output-format text
+```
+
+### 67.4 Code Complexity Monitor
+
+```bash
+#!/bin/bash
+# scripts/complexity-check.sh — Flag complex code in PRs
+git diff main --name-only --diff-filter=ACM | grep -E '\.(ts|js|py)$' | \
+  while read file; do
+    claude -p "Analyze $file for complexity:
+    - Functions over 30 lines
+    - Cyclomatic complexity > 10
+    - Deeply nested code (>3 levels)
+    - Functions with >5 parameters
+    Return only issues found, or 'CLEAN' if none." \
+    --allowedTools "Read" --max-turns 2
+  done
+```
+
+### 67.5 API Documentation Sync
+
+```bash
+#!/bin/bash
+# scripts/sync-api-docs.sh — Keep API docs in sync with code
+claude -p "Compare the API code in src/routes/ with docs/api.yaml.
+  1. Find endpoints in code not documented in the spec
+  2. Find documented endpoints that no longer exist in code
+  3. Find parameter mismatches between code and docs
+  4. Update docs/api.yaml to match the current code
+  5. List all changes made" \
+  --allowedTools "Read,Grep,Glob,Edit" \
+  --max-turns 15
+```
+
+### 67.6 Smart Git Bisect
+
+```bash
+#!/bin/bash
+# scripts/smart-bisect.sh — AI-powered git bisect
+TEST_CMD=$1  # e.g., "npm test -- --grep 'login'"
+GOOD_COMMIT=$2  # e.g., "abc123"
+
+claude -p "Use git bisect to find the commit that broke: $TEST_CMD
+  Good commit: $GOOD_COMMIT
+  Bad commit: HEAD
+
+  For each bisect step:
+  1. Run the test command
+  2. Mark good or bad based on result
+  3. Continue until the breaking commit is found
+  4. Explain what changed in that commit and why it broke things
+  5. Suggest a fix" \
+  --allowedTools "Bash(git *),Bash($TEST_CMD)" \
+  --max-turns 20
+```
+
+### 67.7 Internationalization Scanner
+
+```bash
+#!/bin/bash
+# scripts/i18n-scan.sh — Find hardcoded strings
+claude -p "Scan src/ for hardcoded user-facing strings:
+  1. Find strings in JSX/TSX that aren't wrapped in t() or <Trans>
+  2. Find strings in error messages not using i18n
+  3. Find strings in form labels and placeholders
+  4. Ignore: log messages, comments, variable names, test files
+  Output as: file:line — 'string' — suggested i18n key" \
+  --allowedTools "Read,Grep,Glob" \
+  --max-turns 10
+```
+
+---
+
+## 68. Building a Claude Code Plugin — Complete Walkthrough
+
+### 68.1 Planning the Plugin
+
+Let's build a "code-health" plugin that monitors code quality metrics.
+
+```bash
+mkdir -p code-health-plugin/.claude-plugin
+mkdir -p code-health-plugin/skills/health-check
+mkdir -p code-health-plugin/skills/tech-debt
+mkdir -p code-health-plugin/agents
+mkdir -p code-health-plugin/hooks
+```
+
+### 68.2 Plugin Manifest
+
+```json
+// code-health-plugin/.claude-plugin/plugin.json
+{
+  "name": "code-health",
+  "description": "Monitor and improve code health metrics — complexity, coverage, debt, and dependencies",
+  "version": "1.0.0",
+  "author": { "name": "Your Name" },
+  "homepage": "https://github.com/your-org/code-health-plugin",
+  "license": "MIT"
+}
+```
+
+### 68.3 Health Check Skill
+
+```yaml
+# code-health-plugin/skills/health-check/SKILL.md
+---
+name: health-check
+description: Run a comprehensive code health check on the project. Use when asked about code quality, technical debt, or project health.
+---
+
+Run a comprehensive code health analysis:
+
+## 1. Complexity Analysis
+- Find functions over 50 lines
+- Find files over 500 lines
+- Identify deeply nested code (>4 levels)
+- Count cyclomatic complexity hotspots
+
+## 2. Test Coverage
+- Run test suite with coverage: !`npm test -- --coverage 2>&1 | tail -20`
+- Identify modules below 60% coverage
+- Flag critical paths without tests
+
+## 3. Dependency Health
+- Check for outdated packages: !`npm outdated 2>&1 | head -20`
+- Check for vulnerabilities: !`npm audit --json 2>&1 | head -50`
+- Identify unused dependencies
+
+## 4. Code Smells
+- TODO/FIXME/HACK comments count
+- Duplicated code patterns
+- Dead code (unused exports)
+
+## 5. Report
+Generate a health score (A-F) and prioritized action items.
+Format as a markdown report.
+```
+
+### 68.4 Tech Debt Skill
+
+```yaml
+# code-health-plugin/skills/tech-debt/SKILL.md
+---
+name: tech-debt
+description: Track and manage technical debt. Use when asked about tech debt, cleanup, or refactoring priorities.
+disable-model-invocation: true
+---
+
+Analyze technical debt in $ARGUMENTS:
+
+1. Scan for TODO/FIXME/HACK comments with context
+2. Identify deprecated API usage
+3. Find outdated patterns (callbacks vs promises, var vs const)
+4. Check for missing error handling
+5. Identify tightly coupled modules
+
+For each item:
+- Severity: Critical / High / Medium / Low
+- Effort: Hours to fix
+- Impact: What breaks if not fixed
+- Suggested fix: Brief description
+
+Output as prioritized table sorted by severity × impact.
+```
+
+### 68.5 Code Health Agent
+
+```yaml
+# code-health-plugin/agents/health-reviewer.md
+---
+name: health-reviewer
+description: Reviews code changes for health regressions. Use proactively after code changes.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+---
+
+You are a code health reviewer. After code changes:
+
+1. Run `git diff --stat` to see what changed
+2. For each changed file, check:
+   - Did complexity increase? (longer functions, deeper nesting)
+   - Were tests added for new code?
+   - Are there new TODO/FIXME comments?
+   - Did error handling improve or regress?
+3. Compare before/after metrics
+4. Report only regressions (don't flag pre-existing issues)
+
+Format: file:line — regression type — suggestion
+```
+
+### 68.6 Auto-Lint Hook
+
+```json
+// code-health-plugin/hooks/hooks.json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=$(cat | jq -r \".tool_input.file_path // empty\"); [ -n \"$FILE\" ] && npx eslint --fix \"$FILE\" 2>/dev/null || true'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 68.7 Test and Distribute
+
+```bash
+# Test locally
+claude --plugin-dir ./code-health-plugin
+# Try: /code-health:health-check
+# Try: /code-health:tech-debt src/auth/
+
+# Push to GitHub as a marketplace
+git init code-health-plugin
+cd code-health-plugin
+git add -A && git commit -m "Initial release: code-health plugin v1.0.0"
+gh repo create your-org/code-health-plugin --public --push
+
+# Others install with:
+# claude plugin marketplace add https://github.com/your-org/code-health-plugin
+# /plugin install code-health
+```
+
+---
+
+## 69. Scaling Claude Code Across an Organization
+
+### 69.1 Rollout Phases
+
+| Phase | Timeline | Activities |
+|-------|----------|-----------|
+| **Pilot** | Week 1-2 | 3-5 developers, basic setup, gather feedback |
+| **Team** | Week 3-4 | Full team, shared CLAUDE.md, skills, hooks |
+| **Department** | Month 2 | Multiple teams, plugins, GitHub Actions |
+| **Organization** | Month 3+ | Managed settings, enterprise policies, training |
+
+### 69.2 Pilot Phase Checklist
+
+- [ ] Install Claude Code for 3-5 developers
+- [ ] Create initial CLAUDE.md with project conventions
+- [ ] Run `/init` on main repositories
+- [ ] Track: tasks completed, time saved, quality impact
+- [ ] Collect feedback on pain points and wins
+- [ ] Document common prompts that work well
+
+### 69.3 Team Phase Checklist
+
+- [ ] Commit `.claude/` directory to all repos
+- [ ] Create team skills: `/deploy`, `/review-pr`, `/fix-issue`
+- [ ] Set up hooks: auto-format, block destructive commands
+- [ ] Connect MCP servers: GitHub, Jira/Linear, Slack
+- [ ] Install GitHub Actions for PR review
+- [ ] Create team plugin with shared configurations
+- [ ] Establish CLAUDE.md contribution guidelines
+
+### 69.4 Organization Phase Checklist
+
+- [ ] Deploy managed settings (permissions, model restrictions)
+- [ ] Deploy managed CLAUDE.md (organization-wide standards)
+- [ ] Configure managed MCP servers
+- [ ] Enable sandboxing organization-wide
+- [ ] Set up Code Review for all repositories
+- [ ] Pin model versions for stability
+- [ ] Configure LLM gateway for cost tracking
+- [ ] Create onboarding documentation
+- [ ] Run training sessions for new users
+- [ ] Set up monitoring and cost alerts
+
+### 69.5 Measuring ROI
+
+| Metric | How to Measure |
+|--------|---------------|
+| **Developer velocity** | PRs merged per week (before vs. after) |
+| **Bug fix time** | Time from bug report to fix merged |
+| **Code review time** | Time from PR opened to approved |
+| **Test coverage** | Coverage % trend over time |
+| **Developer satisfaction** | Survey (1-10 scale) |
+| **Cost per developer** | `/cost` aggregated across team |
+
+### 69.6 Common Pitfalls in Organizational Rollout
+
+| Pitfall | Prevention |
+|---------|-----------|
+| **CLAUDE.md bloat** | Review quarterly, prune ruthlessly |
+| **Over-reliance** | Encourage plan mode, code review |
+| **Cost surprises** | Set workspace spend limits, monitor weekly |
+| **Security gaps** | Managed settings + sandboxing from day 1 |
+| **Inconsistent usage** | Shared plugins + team training |
+| **Stale configurations** | Version control all `.claude/` files |
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
