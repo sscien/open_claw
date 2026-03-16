@@ -57,6 +57,9 @@
 48. [Real-World Case Studies](#48-real-world-case-studies)
 49. [Advanced Prompt Engineering for Claude Code](#49-advanced-prompt-engineering-for-claude-code)
 50. [Security Best Practices](#50-security-best-practices)
+51. [Building Custom MCP Servers](#51-building-custom-mcp-servers)
+52. [Building with the Agent SDK (Python/TypeScript)](#52-building-with-the-agent-sdk-pythontypescript)
+53. [Performance Optimization Guide](#53-performance-optimization-guide)
 
 ---
 
@@ -3986,11 +3989,201 @@ Layer 6: Git             → Version control as safety net
 
 ---
 
+## 51. Building Custom MCP Servers
+
+You can build your own MCP servers to give Claude access to proprietary tools, internal APIs, or custom data sources.
+
+### 51.1 Python (FastMCP)
+
+```python
+# my_server.py
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("my-company-tools")
+
+@mcp.tool()
+def get_customer(customer_id: str) -> dict:
+    """Look up a customer by ID from our internal CRM."""
+    # Your internal API call here
+    return {"id": customer_id, "name": "Acme Corp", "plan": "enterprise"}
+
+@mcp.tool()
+def create_ticket(title: str, description: str, priority: str = "medium") -> dict:
+    """Create a support ticket in our internal system."""
+    # Your ticket system API call here
+    return {"ticket_id": "TKT-1234", "status": "created"}
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+```bash
+# Add to Claude Code
+claude mcp add --transport stdio my-tools -- python my_server.py
+```
+
+### 51.2 TypeScript (MCP SDK)
+
+```typescript
+// server.ts
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
+const server = new McpServer({ name: "my-tools", version: "1.0.0" });
+
+server.tool("deploy_service", { service: "string", env: "string" },
+  async ({ service, env }) => {
+    // Your deployment logic here
+    return { content: [{ type: "text", text: `Deployed ${service} to ${env}` }] };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+```bash
+claude mcp add --transport stdio my-tools -- npx tsx server.ts
+```
+
+### 51.3 Monetization: Sell Custom MCP Servers
+
+Build MCP servers for specific industries and sell as SaaS:
+- **Healthcare**: FHIR/HL7 integration, EHR access
+- **Finance**: Bloomberg/Reuters data, trading APIs
+- **Legal**: Case management, document review
+- **Real Estate**: MLS data, property records
+
+Price: $49-$299/month per connection.
+
+---
+
+## 52. Building with the Agent SDK (Python/TypeScript)
+
+### 52.1 Python Quick Start
+
+```python
+from claude_agent_sdk import AgentClient
+
+client = AgentClient()
+
+# Simple query
+result = client.run("Explain the auth module in this project")
+print(result.text)
+
+# With tool approval callback
+def approve_tool(tool_name, tool_input):
+    if tool_name == "Edit":
+        return True  # Auto-approve edits
+    return input(f"Allow {tool_name}? (y/n): ") == "y"
+
+result = client.run(
+    "Fix the login bug",
+    tool_approval=approve_tool,
+    allowed_tools=["Read", "Edit", "Bash"],
+    max_turns=10
+)
+
+# Structured output
+from pydantic import BaseModel
+
+class CodeReview(BaseModel):
+    issues: list[str]
+    severity: str
+    suggestions: list[str]
+
+result = client.run(
+    "Review auth.py for security issues",
+    output_schema=CodeReview
+)
+print(result.structured_output.issues)
+```
+
+### 52.2 TypeScript Quick Start
+
+```typescript
+import { AgentClient } from "@anthropic-ai/claude-agent-sdk";
+
+const client = new AgentClient();
+
+// Simple query
+const result = await client.run("Explain the auth module");
+console.log(result.text);
+
+// Streaming
+for await (const event of client.stream("Analyze this codebase")) {
+  if (event.type === "text_delta") {
+    process.stdout.write(event.text);
+  }
+}
+```
+
+### 52.3 Use Cases for the Agent SDK
+
+| Use Case | Implementation |
+|----------|---------------|
+| **Custom code review bot** | Agent SDK + GitHub webhooks |
+| **Automated testing service** | Agent SDK + CI/CD triggers |
+| **Documentation generator** | Agent SDK + scheduled cron |
+| **Migration automation** | Agent SDK + file processing pipeline |
+| **Internal dev tools** | Agent SDK + company API integrations |
+
+---
+
+## 53. Performance Optimization Guide
+
+### 53.1 Speed Optimization
+
+| Strategy | Impact | How |
+|----------|--------|-----|
+| Use Sonnet for routine tasks | High | `/model sonnet` |
+| Lower effort level | High | `/effort low` for simple tasks |
+| Use Haiku for sub-agents | Medium | `model: haiku` in agent config |
+| Disable extended thinking | Medium | `Option+T` or `MAX_THINKING_TOKENS=0` |
+| Use prompt caching | Auto | Enabled by default |
+| Install code intelligence plugins | Medium | Precise navigation vs. grep |
+
+### 53.2 Context Optimization
+
+| Strategy | Impact | How |
+|----------|--------|-----|
+| `/clear` between tasks | High | Prevents context pollution |
+| Use sub-agents for research | High | Keeps main context clean |
+| Move CLAUDE.md to skills | Medium | On-demand loading |
+| Disable unused MCP servers | Medium | `/mcp` → disable |
+| Use path-scoped rules | Medium | `.claude/rules/` with `paths` |
+| Targeted compaction | Medium | `/compact Focus on X` |
+
+### 53.3 Cost Optimization
+
+| Strategy | Savings | How |
+|----------|---------|-----|
+| Sonnet instead of Opus | ~5x cheaper | `/model sonnet` for most tasks |
+| Haiku for sub-agents | ~25x cheaper than Opus | `model: haiku` |
+| Lower effort level | 2-3x on thinking tokens | `/effort low` |
+| Filter verbose output with hooks | 10-100x on context | PreToolUse hook to grep test output |
+| Specific prompts | 2-5x fewer file reads | "Fix auth.ts line 42" vs. "improve codebase" |
+| Plan mode first | Prevents re-work | `Shift+Tab` before implementing |
+
+### 53.4 Token Budget by Task Type
+
+| Task | Typical Tokens | Recommended Model |
+|------|---------------|-------------------|
+| Quick question | 5K-15K | Haiku or Sonnet |
+| Bug fix | 20K-50K | Sonnet |
+| Feature implementation | 50K-150K | Sonnet or opusplan |
+| Architecture planning | 30K-80K | Opus |
+| Large refactor | 100K-500K | Sonnet with sub-agents |
+| Full codebase review | 200K-1M | Opus[1m] or agent team |
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
