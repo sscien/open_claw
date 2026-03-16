@@ -64,6 +64,9 @@
 55. [Testing Strategies with Claude Code](#55-testing-strategies-with-claude-code)
 56. [Debugging Strategies with Claude Code](#56-debugging-strategies-with-claude-code)
 57. [Migration & Refactoring Patterns](#57-migration--refactoring-patterns)
+58. [CI/CD Pipeline Patterns](#58-cicd-pipeline-patterns)
+59. [Domain-Specific Skill Libraries](#59-domain-specific-skill-libraries)
+60. [Collaboration Patterns](#60-collaboration-patterns)
 
 ---
 
@@ -4456,11 +4459,337 @@ Post-migration:
 
 ---
 
+## 58. CI/CD Pipeline Patterns
+
+### 58.1 Pre-Commit Hook with Claude
+
+```bash
+#!/bin/bash
+# .git/hooks/pre-commit — AI-powered pre-commit check
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -n "$staged_files" ]; then
+  echo "$staged_files" | claude -p \
+    "Review these staged files for obvious bugs, security issues,
+    and missing error handling. Return PASS or FAIL with reasons." \
+    --allowedTools "Read,Grep" \
+    --max-turns 3 \
+    --output-format json | jq -r '.result' | tee /tmp/claude-review.txt
+
+  if grep -q "FAIL" /tmp/claude-review.txt; then
+    echo "Claude found issues. Review /tmp/claude-review.txt"
+    exit 1
+  fi
+fi
+```
+
+### 58.2 Nightly Code Quality Report
+
+```yaml
+# .github/workflows/nightly-report.yml
+name: Nightly Code Quality
+on:
+  schedule:
+    - cron: "0 6 * * *"  # 6am UTC daily
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Generate a daily code quality report:
+            1. Check for TODO/FIXME/HACK comments added in last 24h
+            2. Identify any new dependencies added
+            3. Check for files over 500 lines
+            4. Look for functions over 50 lines
+            5. Check test coverage trends
+            Format as markdown and create an issue titled
+            "Daily Code Quality Report - $(date +%Y-%m-%d)"
+          claude_args: "--model claude-sonnet-4-6 --max-turns 10"
+```
+
+### 58.3 Auto-Fix Lint Errors on PR
+
+```yaml
+name: Auto-Fix Lint
+on:
+  pull_request:
+    types: [opened, synchronize]
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Run the linter and fix any errors:
+            1. npm run lint 2>&1
+            2. For each error, fix the underlying issue (don't just suppress)
+            3. Run lint again to verify
+            4. Commit fixes with message "fix: auto-fix lint errors"
+          claude_args: "--allowedTools Bash,Read,Edit --max-turns 15"
+```
+
+### 58.4 Release Notes Generator
+
+```bash
+#!/bin/bash
+# scripts/generate-release-notes.sh
+VERSION=$1
+PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+
+if [ -z "$PREV_TAG" ]; then
+  COMMITS=$(git log --oneline)
+else
+  COMMITS=$(git log --oneline ${PREV_TAG}..HEAD)
+fi
+
+echo "$COMMITS" | claude -p \
+  "Generate release notes for version $VERSION.
+  Categorize changes into:
+  - Features
+  - Bug Fixes
+  - Performance
+  - Breaking Changes
+  - Dependencies
+  Format as markdown. Be concise but informative." \
+  --output-format text > RELEASE_NOTES.md
+
+echo "Release notes written to RELEASE_NOTES.md"
+```
+
+### 58.5 Dependency Update Automation
+
+```yaml
+name: Weekly Dependency Check
+on:
+  schedule:
+    - cron: "0 9 * * 1"  # Monday 9am
+jobs:
+  deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Check for outdated dependencies:
+            1. Run npm outdated (or equivalent)
+            2. For each outdated package, check the changelog for breaking changes
+            3. Update safe packages (patch and minor versions)
+            4. Run tests after each update
+            5. Create a PR with all safe updates
+            6. List packages with major updates that need manual review
+          claude_args: "--max-turns 20"
+```
+
+---
+
+## 59. Domain-Specific Skill Libraries
+
+### 59.1 Web Development Skills
+
+```yaml
+# .claude/skills/api-design/SKILL.md
+---
+name: api-design
+description: REST API design conventions and patterns
+---
+When designing APIs:
+- Use kebab-case for URL paths: /user-profiles, not /userProfiles
+- Use camelCase for JSON properties
+- Always include pagination for list endpoints (cursor-based preferred)
+- Version in URL path: /v1/, /v2/
+- Standard error format: { "error": { "code": "NOT_FOUND", "message": "..." } }
+- Use HTTP status codes correctly: 201 for creation, 204 for deletion
+- Include rate limit headers: X-RateLimit-Limit, X-RateLimit-Remaining
+```
+
+### 59.2 Database Skills
+
+```yaml
+# .claude/skills/sql-patterns/SKILL.md
+---
+name: sql-patterns
+description: Database query patterns and optimization rules
+---
+SQL conventions:
+- Always use parameterized queries (never string interpolation)
+- Add indexes for columns used in WHERE, JOIN, ORDER BY
+- Use EXPLAIN ANALYZE before optimizing
+- Prefer CTEs over subqueries for readability
+- Always include created_at and updated_at timestamps
+- Use soft deletes (deleted_at) for user-facing data
+- Migrations must be backward-compatible and reversible
+```
+
+### 59.3 Security Skills
+
+```yaml
+# .claude/skills/security-checklist/SKILL.md
+---
+name: security-checklist
+description: Security review checklist for code changes
+---
+Before approving any code change, verify:
+
+Input Validation:
+- [ ] All user input is validated and sanitized
+- [ ] SQL queries use parameterized statements
+- [ ] HTML output is escaped to prevent XSS
+- [ ] File paths are validated to prevent traversal
+
+Authentication:
+- [ ] Passwords are hashed with bcrypt/argon2 (never MD5/SHA)
+- [ ] JWT tokens have reasonable expiration
+- [ ] Session tokens are regenerated after login
+- [ ] Rate limiting on auth endpoints
+
+Authorization:
+- [ ] Every endpoint checks user permissions
+- [ ] No IDOR vulnerabilities (direct object references)
+- [ ] Admin endpoints require admin role
+
+Data:
+- [ ] Sensitive data encrypted at rest
+- [ ] PII not logged
+- [ ] Secrets not in code (use env vars)
+```
+
+### 59.4 DevOps Skills
+
+```yaml
+# .claude/skills/docker-patterns/SKILL.md
+---
+name: docker-patterns
+description: Docker and container best practices
+---
+Dockerfile conventions:
+- Use multi-stage builds to minimize image size
+- Pin base image versions (node:20.11-alpine, not node:latest)
+- Copy package.json first, then npm install (layer caching)
+- Run as non-root user
+- Use .dockerignore to exclude node_modules, .git, tests
+- Health checks with HEALTHCHECK instruction
+- Labels for metadata (version, maintainer, description)
+```
+
+### 59.5 Frontend Skills
+
+```yaml
+# .claude/skills/react-patterns/SKILL.md
+---
+name: react-patterns
+description: React component patterns and conventions
+paths:
+  - "src/components/**/*.tsx"
+  - "src/pages/**/*.tsx"
+---
+React conventions:
+- Functional components only (no class components)
+- Custom hooks for shared logic (useAuth, useFetch, useDebounce)
+- Error boundaries around route-level components
+- Suspense for async data loading
+- React.memo only when profiler shows re-render issues
+- Props interface named {ComponentName}Props
+- Co-locate tests: Component.tsx → Component.test.tsx
+- Co-locate styles: Component.tsx → Component.module.css
+```
+
+---
+
+## 60. Collaboration Patterns
+
+### 60.1 Team CLAUDE.md Workflow
+
+```markdown
+# CLAUDE.md — Shared via git
+
+## How to contribute to this file
+- Add rules when Claude repeatedly makes the same mistake
+- Remove rules when Claude follows them without the rule
+- Keep under 200 lines — move details to .claude/rules/ or skills
+- PR changes to CLAUDE.md like any other code change
+
+## Code Style
+- TypeScript strict mode, no `any` types
+- Prefer `const` over `let`, never `var`
+- Use named exports, not default exports
+
+## Git Workflow
+- Branch naming: feature/TICKET-description, fix/TICKET-description
+- Commit messages: conventional commits (feat:, fix:, chore:, docs:)
+- Squash merge to main
+- Delete branch after merge
+
+## Testing
+- Minimum 80% coverage for new code
+- Integration tests for API endpoints
+- E2E tests for critical user flows
+- Run: npm test -- --coverage
+```
+
+### 60.2 Shared Skills via Git
+
+```bash
+# Commit project skills for the whole team
+git add .claude/skills/ .claude/agents/ .claude/settings.json
+git commit -m "chore: add team Claude Code configuration"
+git push
+```
+
+### 60.3 Plugin Distribution for Teams
+
+```bash
+# Create a team plugin marketplace
+# 1. Create a GitHub repo with your plugins
+# 2. Add marketplace.json at the root
+# 3. Team members add the marketplace:
+claude plugin marketplace add https://github.com/your-org/claude-plugins
+
+# 4. Install team plugins:
+/plugin install your-org/team-tools
+```
+
+### 60.4 Code Review Workflow
+
+```
+# Developer creates PR
+git push && gh pr create
+
+# Claude reviews automatically (GitHub Actions)
+# Developer addresses feedback
+
+# Second review with fresh context
+claude --resume review-session
+"Review the updated PR. Focus on whether the previous
+feedback was addressed correctly."
+```
+
+### 60.5 Pair Programming with Claude
+
+```
+# Start a session focused on collaboration
+"I'm going to implement the payment flow. I'll describe each step
+and you implement it. After each step:
+1. Show me what you wrote
+2. Explain any design decisions
+3. Wait for my approval before continuing
+Let's start with the checkout endpoint."
+```
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
