@@ -26,6 +26,9 @@
 17. [Agent Teams — Multi-Agent Coordination](#17-agent-teams--multi-agent-coordination-experimental)
 18. [Creating & Distributing Plugins (Deep Dive)](#18-creating--distributing-plugins-deep-dive)
 19. [Cross-Surface Workflows](#19-cross-surface-workflows)
+20. [Cost Management & Optimization](#20-cost-management--optimization)
+21. [Extended Thinking & Effort Levels](#21-extended-thinking--effort-levels)
+22. [Common Workflow Recipes](#22-common-workflow-recipes)
 
 ---
 
@@ -1842,9 +1845,180 @@ Claude Code works across every surface — and sessions aren't tied to one.
 
 ---
 
+## 20. Cost Management & Optimization
+
+Average cost: ~$6/developer/day (90th percentile under $12/day). ~$100-200/developer/month with Sonnet 4.6.
+
+### 20.1 Track Costs
+
+```
+/cost     # API token usage for current session (API users)
+/stats    # Usage patterns (Pro/Max subscribers)
+```
+
+### 20.2 Reduce Token Usage
+
+| Strategy | How | Impact |
+|----------|-----|--------|
+| **Clear between tasks** | `/clear` when switching work | High |
+| **Use the right model** | Sonnet for most tasks, Opus for complex reasoning | High |
+| **Compact with focus** | `/compact Focus on API changes` | Medium |
+| **Disable unused MCP servers** | `/mcp` → disable idle servers | Medium |
+| **Install code intelligence plugins** | Precise navigation vs. grep+read | Medium |
+| **Use sub-agents for verbose ops** | Tests, logs, docs stay in sub-agent context | Medium |
+| **Move CLAUDE.md instructions to skills** | Skills load on-demand, not every session | Medium |
+| **Write specific prompts** | "Fix auth.ts line 42" vs. "improve the codebase" | High |
+| **Use plan mode first** | Prevents expensive re-work | High |
+| **Adjust extended thinking** | `/effort` or `MAX_THINKING_TOKENS=8000` | Medium |
+
+### 20.3 Team Rate Limits (TPM per user)
+
+| Team Size | TPM/User | RPM/User |
+|-----------|----------|----------|
+| 1-5 | 200k-300k | 5-7 |
+| 5-20 | 100k-150k | 2.5-3.5 |
+| 20-50 | 50k-75k | 1.25-1.75 |
+| 50-100 | 25k-35k | 0.62-0.87 |
+| 100-500 | 15k-20k | 0.37-0.47 |
+| 500+ | 10k-15k | 0.25-0.35 |
+
+### 20.4 Cost-Saving Hook Example
+
+Filter test output to show only failures (saves thousands of tokens):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "~/.claude/hooks/filter-test-output.sh"
+      }]
+    }]
+  }
+}
+```
+
+---
+
+## 21. Extended Thinking & Effort Levels
+
+Extended thinking gives Claude space to reason through complex problems step-by-step before responding.
+
+### 21.1 Configure Thinking
+
+| Method | How |
+|--------|-----|
+| **Effort level** | `/effort` or `/model` menu |
+| **ultrathink keyword** | Include "ultrathink" in your prompt for one-off deep reasoning |
+| **Toggle shortcut** | `Option+T` (macOS) / `Alt+T` (Windows/Linux) |
+| **Global default** | `/config` → toggle thinking mode |
+| **Token budget** | `MAX_THINKING_TOKENS=10000` environment variable |
+
+### 21.2 When to Use Extended Thinking
+
+- Complex architectural decisions
+- Challenging multi-step bugs
+- Implementation planning across many files
+- Evaluating tradeoffs between approaches
+
+### 21.3 Adaptive Reasoning (Opus 4.6 / Sonnet 4.6)
+
+These models dynamically allocate thinking tokens based on your effort level — no fixed budget needed. Set effort with `/effort` or `CLAUDE_CODE_EFFORT_LEVEL` env var.
+
+---
+
+## 22. Common Workflow Recipes
+
+### 22.1 Explore a New Codebase
+
+```
+give me an overview of this codebase
+explain the main architecture patterns
+how is authentication handled?
+trace the login process from front-end to database
+```
+
+### 22.2 Fix a Bug
+
+```
+I'm seeing this error when I run npm test: [paste error]
+suggest a few ways to fix it
+apply the null check fix and run the tests again
+```
+
+### 22.3 Refactor Legacy Code
+
+```
+find deprecated API usage in our codebase
+suggest how to refactor utils.js to use ES2024 features
+refactor utils.js while maintaining the same behavior
+run tests for the refactored code
+```
+
+### 22.4 Add Tests
+
+```
+find functions in NotificationsService.swift not covered by tests
+add tests for the notification service
+add test cases for edge conditions
+run the new tests and fix any failures
+```
+
+### 22.5 Create a Pull Request
+
+```
+summarize the changes I've made to the authentication module
+create a pr
+enhance the PR description with more context about security improvements
+```
+
+### 22.6 Use Claude as a Unix Utility
+
+```bash
+# Linter
+claude -p 'look at changes vs. main and report typos with filename:line'
+
+# Pipe data through
+cat build-error.txt | claude -p 'explain the root cause' > output.txt
+
+# Structured output
+cat code.py | claude -p 'analyze for bugs' --output-format json > analysis.json
+
+# Streaming
+cat log.txt | claude -p 'parse for errors' --output-format stream-json
+```
+
+### 22.7 Desktop Notifications When Claude Needs You
+
+```json
+{
+  "hooks": {
+    "Notification": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "osascript -e 'display notification \"Claude needs attention\" with title \"Claude Code\"'"
+      }]
+    }]
+  }
+}
+```
+
+### 22.8 Work with Images
+
+- Drag and drop images into Claude Code
+- Copy/paste with `Ctrl+V`
+- Provide image paths: `Analyze this image: /path/to/screenshot.png`
+- Use for: error screenshots, UI mockups, database diagrams, design specs
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
