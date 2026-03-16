@@ -76,6 +76,10 @@
 67. [Automation Cookbook — Production-Ready Scripts](#67-automation-cookbook--production-ready-scripts)
 68. [Building a Claude Code Plugin — Complete Walkthrough](#68-building-a-claude-code-plugin--complete-walkthrough)
 69. [Scaling Claude Code Across an Organization](#69-scaling-claude-code-across-an-organization)
+70. [Advanced Hook Patterns](#70-advanced-hook-patterns)
+71. [Advanced Sub-Agent Patterns](#71-advanced-sub-agent-patterns)
+72. [Advanced MCP Patterns](#72-advanced-mcp-patterns)
+73. [The Claude Code Ecosystem — What's Next](#73-the-claude-code-ecosystem--whats-next)
 
 ---
 
@@ -5578,11 +5582,386 @@ gh repo create your-org/code-health-plugin --public --push
 
 ---
 
-> **This tutorial covers every feature of Claude Code as of March 2026.**
+## 70. Advanced Hook Patterns
+
+### 70.1 Chain Multiple Hooks on One Event
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "npx prettier --write ." },
+          { "type": "command", "command": "npx eslint --fix ." },
+          { "type": "command", "command": "npx tsc --noEmit 2>&1 | head -20" }
+        ]
+      }
+    ]
+  }
+}
+```
+
+All three hooks run sequentially after every file edit: format → lint → typecheck.
+
+### 70.2 Conditional Hook with Environment Detection
+
+```bash
+#!/bin/bash
+# .claude/hooks/env-guard.sh — Block production-dangerous commands
+input=$(cat)
+CMD=$(echo "$input" | jq -r '.tool_input.command // empty')
+
+# Check if we're pointing at production
+if echo "$CMD" | grep -qE '(prod|production)' && \
+   echo "$CMD" | grep -qE '(migrate|deploy|delete|drop)'; then
+  echo '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Production-affecting command blocked. Use staging first."}}'
+else
+  exit 0
+fi
+```
+
+### 70.3 Async Logging Hook (Non-Blocking)
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cat | jq -c \"{timestamp: now, tool: .tool_name, session: .session_id}\" >> ~/.claude/audit.jsonl'",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+Async hooks run in the background without blocking Claude. Great for logging, notifications, and metrics.
+
+### 70.4 SessionStart Hook for Environment Setup
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c '[ -f package.json ] && npm install --silent 2>/dev/null; [ -f requirements.txt ] && pip install -q -r requirements.txt 2>/dev/null; exit 0'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 70.5 Stop Hook — Ensure Tests Pass Before Completion
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "agent",
+            "prompt": "Before stopping, verify: 1) All modified files are saved, 2) Run the test suite and confirm all tests pass, 3) Run the linter and confirm no errors. If any check fails, report what failed.",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 70.6 Elicitation Hook — Auto-Fill OAuth Prompts
+
+```json
+{
+  "hooks": {
+    "Elicitation": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cat | jq -r .elicitation_id | grep -q oauth && echo \"{\\\"decision\\\":\\\"approve\\\"}\" || exit 0'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### 70.7 InstructionsLoaded Hook — Debug Which Files Load
+
+```json
+{
+  "hooks": {
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cat | jq -r \".files[]\" >> /tmp/claude-instructions-loaded.log'",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 71. Advanced Sub-Agent Patterns
+
+### 71.1 Research → Implement → Review Pipeline
+
+```
+Use three sub-agents in sequence:
+1. Research agent: Explore the codebase and understand the current auth system
+2. Implementation agent: Implement OAuth2 based on the research findings
+3. Review agent: Review the implementation for security issues
+
+Pass findings from each agent to the next.
+```
+
+### 71.2 Competing Implementation Agents
+
+```
+I need to optimize the search endpoint. Spawn two sub-agents:
+1. Agent A: Optimize using database indexing and query optimization
+2. Agent B: Optimize using caching (Redis) and denormalization
+
+Both should implement their approach and benchmark it.
+I'll choose the better one.
+```
+
+### 71.3 Sub-Agent with Persistent Memory
+
+```yaml
+---
+name: codebase-expert
+description: Maintains deep knowledge of the codebase across sessions
+tools: Read, Grep, Glob
+model: sonnet
+memory: project
+---
+
+You are a codebase expert. Your job is to maintain deep knowledge of
+this project's architecture, patterns, and conventions.
+
+When invoked:
+1. Check your memory for existing knowledge
+2. Explore any areas that have changed since your last review
+3. Update your memory with new findings
+4. Answer the user's question using your accumulated knowledge
+
+Always update your memory after discovering new patterns or changes.
+```
+
+### 71.4 Specialized Language Agents
+
+```yaml
+---
+name: sql-expert
+description: Database query specialist. Use for complex SQL, schema design, and query optimization.
+tools: Bash, Read, Grep
+model: opus
+---
+
+You are a database expert specializing in PostgreSQL.
+
+When asked about queries:
+1. Analyze the current schema
+2. Write optimized queries with EXPLAIN ANALYZE
+3. Suggest index improvements
+4. Check for N+1 query patterns in the ORM code
+
+When asked about schema changes:
+1. Design the migration
+2. Write forward and rollback scripts
+3. Estimate data migration time
+4. Check for breaking changes in dependent code
+```
+
+### 71.5 Background Monitoring Agent
+
+```
+Run a background sub-agent that monitors the test suite:
+- Run tests every time I make a change
+- Only notify me if something breaks
+- Keep a running log of test results
+- If tests fail, suggest the likely cause based on recent changes
+```
+
+### 71.6 Git Worktree Isolation for Risky Changes
+
+```yaml
+---
+name: experimental
+description: Try risky changes in isolation without affecting the main workspace
+tools: Read, Edit, Write, Bash, Grep, Glob
+isolation: worktree
+---
+
+You work in an isolated git worktree. Feel free to make bold changes
+without worrying about breaking the main workspace.
+
+After completing your work:
+1. Run all tests
+2. If tests pass, summarize what you changed and why
+3. The user will decide whether to merge your changes
+```
+
+---
+
+## 72. Advanced MCP Patterns
+
+### 72.1 Multi-Database Workflow
+
+```bash
+# Connect multiple databases
+claude mcp add --transport stdio postgres-prod -- npx -y @bytebase/dbhub \
+  --dsn "postgresql://readonly:pass@prod.db:5432/app"
+
+claude mcp add --transport stdio postgres-staging -- npx -y @bytebase/dbhub \
+  --dsn "postgresql://admin:pass@staging.db:5432/app"
+
+# Then in Claude Code:
+"Compare the users table schema between prod and staging.
+List any differences and generate a migration to sync staging."
+```
+
+### 72.2 MCP + Skill Combination
+
+```yaml
+# .claude/skills/incident-response/SKILL.md
+---
+name: incident-response
+description: Investigate and respond to production incidents
+disable-model-invocation: true
+---
+
+Investigate the incident described in $ARGUMENTS:
+
+1. Check Sentry for related errors (use Sentry MCP)
+2. Check application logs for the timeframe
+3. Query the database for affected records (use DB MCP)
+4. Check recent deployments via GitHub (use GitHub MCP)
+5. Post initial findings to Slack (use Slack MCP)
+6. Create a GitHub issue with the investigation summary
+7. If root cause is found, create a fix PR
+```
+
+### 72.3 Scoped MCP in Sub-Agents
+
+```yaml
+---
+name: data-analyst
+description: Analyze data from our databases
+tools: Bash, Read
+mcpServers:
+  - analytics-db:
+      type: stdio
+      command: npx
+      args: ["-y", "@bytebase/dbhub", "--dsn", "postgresql://readonly:pass@analytics.db:5432/warehouse"]
+---
+
+You have read-only access to the analytics database.
+Answer data questions using SQL queries.
+Never modify data — you only have SELECT access.
+```
+
+The MCP server is scoped to this sub-agent only — it doesn't appear in the main conversation.
+
+### 72.4 Dynamic MCP Server Discovery
+
+```bash
+# List all available MCP servers
+claude mcp list
+
+# Check which tools each server provides
+/mcp
+
+# Search for tools across all servers
+"What MCP tools do I have for working with GitHub?"
+```
+
+---
+
+## 73. The Claude Code Ecosystem — What's Next
+
+### 73.1 Current Ecosystem (March 2026)
+
+| Component | Status | Description |
+|-----------|--------|-------------|
+| **CLI** | Stable | Full-featured terminal interface |
+| **VS Code** | Stable | IDE extension with inline diffs |
+| **JetBrains** | Beta | Plugin for IntelliJ family |
+| **Desktop App** | Stable | Visual interface with scheduling |
+| **Web** | Preview | Cloud execution, no local setup |
+| **Slack** | Stable | Team workflow integration |
+| **Chrome** | Beta | Browser automation |
+| **GitHub Actions** | Stable (v1) | CI/CD automation |
+| **GitLab CI/CD** | Beta | GitLab pipeline integration |
+| **Code Review** | Preview | Automated PR review (managed) |
+| **Agent SDK** | Stable | Python + TypeScript packages |
+| **Agent Teams** | Experimental | Multi-agent coordination |
+| **Plugins** | Stable | Marketplace + distribution |
+| **Remote Control** | Stable | Cross-device session control |
+| **Sandboxing** | Stable | OS-level isolation |
+
+### 73.2 Building on the Ecosystem
+
+The Claude Code ecosystem is designed to be extensible at every layer:
+
+1. **Skills** — Add domain knowledge and workflows
+2. **Hooks** — Automate lifecycle events
+3. **Sub-Agents** — Create specialized workers
+4. **MCP Servers** — Connect any external service
+5. **Plugins** — Package and distribute everything
+6. **Agent SDK** — Build custom applications
+7. **GitHub/GitLab Actions** — Automate CI/CD
+
+### 73.3 Community Resources
+
+- **GitHub Issues**: [github.com/anthropics/claude-code/issues](https://github.com/anthropics/claude-code/issues)
+- **Documentation**: [code.claude.com/docs](https://code.claude.com/docs)
+- **Plugin Marketplace**: Browse with `/plugin` in Claude Code
+- **MCP Registry**: [github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
+- **Agent Skills Standard**: [agentskills.io](https://agentskills.io)
+
+### 73.4 Contributing
+
+- Report bugs: `/bug` in Claude Code or GitHub Issues
+- Share plugins: Create a marketplace repo
+- Share skills: Commit to `.claude/skills/` in your repos
+- Share CLAUDE.md patterns: Blog posts, GitHub repos
+- Build MCP servers: [modelcontextprotocol.io](https://modelcontextprotocol.io)
+
+---
+
+> **This is the most comprehensive Claude Code tutorial available — 73 chapters covering every feature, pattern, and monetization scenario.**
+>
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
