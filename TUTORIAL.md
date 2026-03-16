@@ -49,6 +49,8 @@
 40. [Glossary](#40-glossary)
 41. [Desktop App — Visual Interface](#41-desktop-app--visual-interface)
 42. [VS Code Extension — IDE Integration](#42-vs-code-extension--ide-integration)
+43. [JetBrains Integration](#43-jetbrains-integration)
+44. [Getting Started Roadmap — By User Type](#44-getting-started-roadmap--by-user-type)
 
 ---
 
@@ -3251,9 +3253,91 @@ Hover over any message to reveal the rewind button:
 
 ---
 
-> **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
+## 43. JetBrains Integration
+
+The JetBrains plugin works with IntelliJ IDEA, PyCharm, WebStorm, and other JetBrains IDEs.
+
+### 43.1 Installation
+
+Install from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/27310-claude-code-beta-) and restart your IDE.
+
+### 43.2 Features
+
+- Interactive diff viewing with accept/reject
+- Selection context sharing (highlight code → ask Claude about it)
+- Conversation history
+- Plan mode support
+- Works alongside the CLI (shared settings and memory)
+
+---
+
+## 44. Getting Started Roadmap — By User Type
+
+### 44.1 Solo Developer (Day 1)
+
+```bash
+# Install
+curl -fsSL https://claude.ai/install.sh | bash
+
+# Start in your project
+cd your-project && claude
+
+# Generate CLAUDE.md
+/init
+
+# Try these prompts:
+"give me an overview of this codebase"
+"fix the bug in src/auth/login.ts"
+"write tests for the user service"
+"commit with a descriptive message"
+```
+
+### 44.2 Team Lead (Week 1)
+
+1. **Set up CLAUDE.md** — coding standards, architecture, workflows
+2. **Create project skills** — `/deploy`, `/review-pr`, `/fix-issue`
+3. **Add hooks** — auto-format after edits, block dangerous commands
+4. **Connect MCP servers** — GitHub, Jira, Slack
+5. **Install GitHub Actions** — `/install-github-app`
+6. **Share via git** — commit `.claude/` directory
+
+### 44.3 Enterprise Admin (First Month)
+
+1. **Choose auth method** — Claude API, Bedrock, Vertex, or Foundry
+2. **Deploy managed settings** — permission rules, model restrictions
+3. **Deploy managed CLAUDE.md** — organization-wide coding standards
+4. **Configure managed MCP** — approved integrations only
+5. **Enable sandboxing** — OS-level isolation for all users
+6. **Set up Code Review** — automated PR review for all repos
+7. **Pin model versions** — prevent breakage on updates
+8. **Set rate limits** — per-user TPM based on team size
+
+### 44.4 Freelancer / Agency (Revenue Focus)
+
+1. **Master the basics** — Plan mode, verification, context management
+2. **Create reusable skills** — `/deploy-client`, `/generate-tests`, `/migrate-code`
+3. **Set up GitHub Actions** — automated code review for client repos
+4. **Build plugin portfolio** — industry-specific plugins for sale
+5. **Use /batch for migrations** — parallel changes across large codebases
+6. **Leverage Agent SDK** — custom automation for client workflows
+
+### 44.5 Open Source Maintainer
+
+1. **Add CLAUDE.md** — contribution guidelines, architecture docs
+2. **Create REVIEW.md** — what to flag in PRs
+3. **Enable Code Review** — automated review on every PR
+4. **Add project skills** — `/setup-dev`, `/run-tests`, `/release`
+5. **Connect GitHub MCP** — issue triage, PR management
+6. **Use @claude in issues** — let Claude implement feature requests
+
+---
+
+> **This tutorial covers every feature of Claude Code as of March 2026.**
+> Star the repo and check back — new features are added as Claude Code evolves.
 >
-> Built with Claude Code. Updated March 2026.
+> Built with Claude Code (Opus 4.6). Continuously updated.
+> Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
