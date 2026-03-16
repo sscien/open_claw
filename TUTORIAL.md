@@ -32,6 +32,9 @@
 23. [Model Configuration & Selection](#23-model-configuration--selection)
 24. [Permissions & Security](#24-permissions--security)
 25. [Scheduled Tasks & Automation](#25-scheduled-tasks--automation)
+26. [Project Rules — Scoped Instructions](#26-project-rules--scoped-instructions)
+27. [Auto Memory Deep Dive](#27-auto-memory-deep-dive)
+28. [Troubleshooting Guide](#28-troubleshooting-guide)
 
 ---
 
@@ -2208,9 +2211,226 @@ For tasks that survive restarts:
 
 ---
 
+## 26. Project Rules — Scoped Instructions
+
+Rules let you scope instructions to specific file types or subdirectories, keeping context lean.
+
+### 26.1 Setup
+
+Place markdown files in `.claude/rules/`:
+
+```
+.claude/
+├── CLAUDE.md              # Main project instructions
+└── rules/
+    ├── code-style.md      # Always loaded
+    ├── testing.md          # Always loaded
+    ├── security.md         # Always loaded
+    └── frontend/
+        └── react.md       # Organize by topic
+```
+
+### 26.2 Path-Specific Rules
+
+Rules can be scoped to specific files using YAML frontmatter:
+
+```yaml
+# .claude/rules/api-rules.md
+---
+paths:
+  - "src/api/**/*.ts"
+---
+
+# API Development Rules
+- All endpoints must include input validation
+- Use the standard error response format
+- Include OpenAPI documentation comments
+```
+
+These rules only load when Claude works with matching files — saving context.
+
+### 26.3 Glob Patterns
+
+| Pattern | Matches |
+|---------|---------|
+| `**/*.ts` | All TypeScript files |
+| `src/**/*` | All files under src/ |
+| `*.md` | Markdown files in project root |
+| `src/components/*.tsx` | React components in specific dir |
+| `src/**/*.{ts,tsx}` | Multiple extensions with brace expansion |
+
+### 26.4 Shared Rules via Symlinks
+
+```bash
+ln -s ~/shared-claude-rules .claude/rules/shared
+ln -s ~/company-standards/security.md .claude/rules/security.md
+```
+
+### 26.5 User-Level Rules
+
+Personal rules in `~/.claude/rules/` apply to every project:
+
+```
+~/.claude/rules/
+├── preferences.md    # Your coding preferences
+└── workflows.md      # Your preferred workflows
+```
+
+---
+
+## 27. Auto Memory Deep Dive
+
+Auto memory lets Claude accumulate knowledge across sessions without you writing anything.
+
+### 27.1 How It Works
+
+- Claude saves notes as it works: build commands, debugging insights, architecture notes
+- Stored in `~/.claude/projects/<project>/memory/`
+- First 200 lines of `MEMORY.md` loaded every session
+- Topic files (e.g., `debugging.md`) loaded on-demand
+
+### 27.2 Memory Directory Structure
+
+```
+~/.claude/projects/<project>/memory/
+├── MEMORY.md          # Concise index (loaded every session)
+├── debugging.md       # Debugging patterns
+├── api-conventions.md # API design decisions
+└── build-notes.md     # Build system quirks
+```
+
+### 27.3 Enable/Disable
+
+```
+/memory              # Browse and toggle auto memory
+```
+
+Or in settings:
+```json
+{ "autoMemoryEnabled": false }
+```
+
+### 27.4 Custom Memory Location
+
+```json
+{ "autoMemoryDirectory": "~/my-custom-memory-dir" }
+```
+
+### 27.5 Tips
+
+- Ask Claude to "remember that the API tests require Redis" → saved to auto memory
+- Ask Claude to "add this to CLAUDE.md" → saved to CLAUDE.md instead
+- Edit memory files directly — they're plain markdown
+- All worktrees in the same git repo share one memory directory
+
+---
+
+## 28. Troubleshooting Guide
+
+### 28.1 Claude Isn't Following CLAUDE.md
+
+1. Run `/memory` to verify files are loaded
+2. Check file is in a loaded location (project root, parent dirs, or `~/.claude/`)
+3. Make instructions more specific ("Use 2-space indentation" not "format nicely")
+4. Look for conflicting instructions across files
+5. If file is too long (>200 lines), prune or split into rules/skills
+
+### 28.2 MCP Server Not Connecting
+
+```bash
+claude mcp list          # Check configured servers
+/mcp                     # Check status inside Claude Code
+claude mcp get <name>    # Get details for specific server
+```
+
+Common fixes:
+- Verify the server URL is correct
+- Check authentication with `/mcp` → follow browser login
+- For stdio servers, ensure the command is in PATH
+- Set `MCP_TIMEOUT=10000` for slow-starting servers
+
+### 28.3 Permission Errors
+
+```
+/permissions             # View and manage permission rules
+```
+
+- Check if a deny rule is blocking the action
+- Verify settings precedence (managed > CLI > local > project > user)
+- For sandboxing issues, check `sandbox.filesystem.allowWrite`
+
+### 28.4 High Token Usage
+
+```
+/cost                    # Check current session costs
+/context                 # See what's consuming context space
+```
+
+Fixes:
+- `/clear` between unrelated tasks
+- Use sub-agents for verbose operations
+- Disable unused MCP servers
+- Move CLAUDE.md instructions to on-demand skills
+- Lower effort level: `/effort low`
+
+### 28.5 Claude Keeps Making the Same Mistake
+
+After 2 failed corrections:
+1. `/clear` to reset context
+2. Write a better initial prompt incorporating what you learned
+3. Add the rule to CLAUDE.md if it's a recurring issue
+4. Consider a hook for deterministic enforcement
+
+### 28.6 Slow Performance
+
+- Switch to Sonnet for routine tasks: `/model sonnet`
+- Lower effort: `/effort low`
+- Use Haiku for sub-agents: `model: haiku` in agent config
+- Reduce MCP server count
+- Install code intelligence plugins (fewer file reads)
+
+### 28.7 Context Window Full
+
+- `/compact` to summarize and free space
+- `/compact Focus on the API changes` for targeted compaction
+- Use `opus[1m]` or `sonnet[1m]` for 1M context window
+- Delegate verbose operations to sub-agents
+- `/clear` and start fresh with a focused prompt
+
+### 28.8 Hooks Not Firing
+
+1. `/hooks` to browse configured hooks
+2. Check matcher regex matches the tool name
+3. Verify script is executable: `chmod +x script.sh`
+4. Check exit codes (0=success, 2=block, other=non-blocking error)
+5. Test the script manually with sample JSON input
+
+### 28.9 Skills Not Triggering
+
+1. Check description includes keywords users would say
+2. Verify skill appears: "What skills are available?"
+3. Try invoking directly: `/skill-name`
+4. If triggering too often, make description more specific
+5. If too many skills, check `/context` for budget warnings
+
+### 28.10 Installation Issues
+
+```bash
+claude doctor            # Detailed installation check
+claude --version         # Verify installation
+```
+
+- macOS: Seatbelt sandbox works out of the box
+- Linux: Install `bubblewrap socat` for sandboxing
+- Windows: Requires Git for Windows or WSL
+- WSL1: No sandbox support (use WSL2)
+
+---
+
 > **This tutorial is continuously updated.** Star the repo and check back for new features, patterns, and monetization scenarios as Claude Code evolves.
 >
 > Built with Claude Code. Updated March 2026.
+
 
 
 
