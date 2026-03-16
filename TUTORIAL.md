@@ -83,6 +83,10 @@
 74. [Real-World Monetization Deep Dives](#74-real-world-monetization-deep-dives)
 75. [Advanced Skill Patterns](#75-advanced-skill-patterns)
 76. [Claude Code for Specific Industries](#76-claude-code-for-specific-industries)
+77. [Building AI-Powered Developer Tools with Claude Code](#77-building-ai-powered-developer-tools-with-claude-code)
+78. [Claude Code for DevOps & Infrastructure](#78-claude-code-for-devops--infrastructure)
+79. [Claude Code for Data Engineering](#79-claude-code-for-data-engineering)
+80. [The Complete Claude Code Command Reference](#80-the-complete-claude-code-command-reference)
 
 ---
 
@@ -6331,12 +6335,435 @@ Multi-tenant conventions:
 
 ---
 
-> **This is the most comprehensive Claude Code tutorial available — 76 chapters covering every feature, pattern, and monetization scenario.**
+## 77. Building AI-Powered Developer Tools with Claude Code
+
+### 77.1 Custom Code Linter
+
+Build a domain-specific linter that understands your business logic:
+
+```bash
+#!/bin/bash
+# scripts/ai-lint.sh — AI-powered linting beyond what ESLint catches
+FILES=${1:-$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|js|tsx|jsx)$')}
+
+for file in $FILES; do
+  claude -p "Lint $file for business logic issues:
+    - API calls without error handling
+    - State mutations without optimistic updates
+    - Missing loading/error states in UI components
+    - Hardcoded strings that should be i18n keys
+    - Direct DOM manipulation in React components
+    - Promises without proper rejection handling
+    Return: file:line — issue — severity (error/warning)" \
+    --allowedTools "Read" --max-turns 2 --output-format text
+done
+```
+
+### 77.2 Smart Commit Message Generator
+
+```bash
+#!/bin/bash
+# scripts/smart-commit.sh — Generate conventional commit messages
+DIFF=$(git diff --cached --stat)
+DETAILED=$(git diff --cached)
+
+echo "$DETAILED" | claude -p "Generate a conventional commit message for these changes.
+  Rules:
+  - Format: type(scope): description
+  - Types: feat, fix, refactor, test, docs, chore, perf, ci
+  - Scope: the module or area changed
+  - Description: imperative mood, lowercase, no period
+  - Body: explain WHY, not WHAT (the diff shows what)
+  - Footer: reference issues if obvious from the changes
+
+  Stats: $DIFF
+
+  Return ONLY the commit message, nothing else." \
+  --output-format text | git commit -F -
+```
+
+### 77.3 PR Description Generator
+
+```bash
+#!/bin/bash
+# scripts/pr-description.sh — Generate detailed PR descriptions
+BRANCH=$(git branch --show-current)
+BASE=${1:-main}
+COMMITS=$(git log --oneline $BASE..$BRANCH)
+DIFF_STAT=$(git diff --stat $BASE..$BRANCH)
+DIFF=$(git diff $BASE..$BRANCH | head -500)
+
+echo "$DIFF" | claude -p "Generate a PR description for branch '$BRANCH':
+
+Commits:
+$COMMITS
+
+Stats:
+$DIFF_STAT
+
+Include:
+## Summary
+Brief description of what this PR does and why.
+
+## Changes
+- Bullet list of key changes
+
+## Testing
+How to test these changes.
+
+## Screenshots
+(if UI changes, note where screenshots should go)
+
+## Checklist
+- [ ] Tests added/updated
+- [ ] Documentation updated
+- [ ] No breaking changes (or documented in migration guide)" \
+  --output-format text
+```
+
+### 77.4 Code Review Bot (Webhook-Based)
+
+```typescript
+// review-bot/server.ts — Webhook handler for GitHub PR events
+import express from "express";
+import { AgentClient } from "@anthropic-ai/claude-agent-sdk";
+
+const app = express();
+app.use(express.json());
+
+app.post("/webhook", async (req, res) => {
+  const { action, pull_request } = req.body;
+
+  if (action !== "opened" && action !== "synchronize") {
+    return res.sendStatus(200);
+  }
+
+  const client = new AgentClient();
+  const review = await client.run(
+    `Review PR #${pull_request.number} in ${pull_request.base.repo.full_name}.
+    Focus on: security, performance, correctness.
+    Post findings as GitHub review comments.`,
+    {
+      allowedTools: ["Read", "Grep", "Glob", "Bash"],
+      maxTurns: 15,
+    }
+  );
+
+  res.json({ status: "reviewed", findings: review.text });
+});
+
+app.listen(3000);
+```
+
+### 77.5 Documentation Site Generator
+
+```yaml
+# .claude/skills/generate-docs-site/SKILL.md
+---
+name: generate-docs-site
+description: Generate a documentation website from code comments and README files
+disable-model-invocation: true
+allowed-tools: Read, Grep, Glob, Write, Bash
+---
+
+Generate a documentation site for this project:
+
+1. Scan all source files for JSDoc/docstring comments
+2. Read all README.md and docs/*.md files
+3. Extract API endpoints from route files
+4. Generate a docs/ directory with:
+   - index.html (overview with navigation)
+   - api.html (API reference from code comments)
+   - guides.html (from README and docs/)
+   - examples.html (code examples from tests)
+5. Use a clean, minimal CSS theme
+6. Include search functionality
+7. Open in browser to verify
+
+Use Tailwind CSS via CDN for styling.
+```
+
+---
+
+## 78. Claude Code for DevOps & Infrastructure
+
+### 78.1 Terraform/IaC Review Skill
+
+```yaml
+---
+name: iac-review
+description: Review infrastructure-as-code changes for security and best practices
+---
+Review IaC changes for:
+
+Security:
+- [ ] No hardcoded secrets or credentials
+- [ ] Security groups follow least-privilege
+- [ ] Encryption enabled for storage and databases
+- [ ] Public access disabled unless explicitly required
+- [ ] IAM roles follow least-privilege principle
+
+Best Practices:
+- [ ] Resources are tagged (Name, Environment, Team, Cost-Center)
+- [ ] State is stored remotely with locking
+- [ ] Modules are versioned
+- [ ] Variables have descriptions and validation
+- [ ] Outputs are documented
+
+Cost:
+- [ ] Instance sizes are appropriate for workload
+- [ ] Auto-scaling is configured where applicable
+- [ ] Reserved instances considered for stable workloads
+- [ ] Unused resources identified for cleanup
+```
+
+### 78.2 Kubernetes Debugging
+
+```
+"I'm seeing CrashLoopBackOff on the payment-service pod.
+Debug it:
+1. Check pod logs: kubectl logs payment-service-xxx
+2. Check pod events: kubectl describe pod payment-service-xxx
+3. Check resource limits and actual usage
+4. Check if dependent services are healthy
+5. Check recent deployments that might have caused this
+6. Suggest a fix based on findings"
+```
+
+### 78.3 Cloud Cost Optimization
+
+```yaml
+---
+name: cloud-cost-review
+description: Analyze cloud infrastructure for cost optimization opportunities
+disable-model-invocation: true
+---
+
+Analyze cloud costs and suggest optimizations:
+
+1. Check for idle/underutilized resources:
+   - EC2 instances with <10% CPU average
+   - RDS instances with <5% connection utilization
+   - EBS volumes not attached to instances
+   - Elastic IPs not associated with instances
+
+2. Check for right-sizing opportunities:
+   - Instances that could be downsized
+   - Over-provisioned databases
+   - Storage tiers that could be cheaper
+
+3. Check for architectural optimizations:
+   - Services that could use spot/preemptible instances
+   - Workloads suitable for serverless
+   - Data transfer costs that could be reduced
+
+4. Generate a report with:
+   - Current monthly cost estimate
+   - Potential savings per recommendation
+   - Implementation effort (easy/medium/hard)
+   - Risk level of each change
+```
+
+### 78.4 Incident Response Automation
+
+```yaml
+---
+name: incident
+description: Automated incident response workflow
+disable-model-invocation: true
+---
+
+Incident response for: $ARGUMENTS
+
+## Phase 1: Triage (First 5 minutes)
+- Check monitoring dashboards
+- Identify affected services
+- Determine severity (P1-P4)
+- Notify on-call team via Slack
+
+## Phase 2: Investigate (Next 15 minutes)
+- Check error logs for the affected timeframe
+- Check recent deployments
+- Check infrastructure metrics (CPU, memory, disk, network)
+- Check dependent service health
+- Identify the root cause or top 3 hypotheses
+
+## Phase 3: Mitigate (Next 30 minutes)
+- If deployment-related: rollback to last known good
+- If infrastructure: scale up or failover
+- If data: identify and fix corrupted records
+- Verify mitigation is working
+
+## Phase 4: Document
+- Create incident report with timeline
+- Document root cause
+- List action items to prevent recurrence
+- Post summary to Slack
+- Create follow-up tickets
+```
+
+---
+
+## 79. Claude Code for Data Engineering
+
+### 79.1 Data Pipeline Review
+
+```yaml
+---
+name: pipeline-review
+description: Review data pipeline code for correctness and efficiency
+---
+Review data pipeline for:
+
+Correctness:
+- Data types match between source and destination
+- NULL handling is explicit (not silently dropped)
+- Deduplication logic is correct
+- Timestamps use consistent timezone (UTC preferred)
+- Incremental loads handle late-arriving data
+
+Efficiency:
+- Partitioning strategy is appropriate
+- Unnecessary full table scans avoided
+- Joins use appropriate keys (indexed)
+- Data is filtered early in the pipeline
+- Temporary tables are cleaned up
+
+Reliability:
+- Idempotent operations (safe to re-run)
+- Error handling with dead letter queues
+- Monitoring and alerting configured
+- Schema evolution handled gracefully
+- Backfill strategy documented
+```
+
+### 79.2 SQL Query Optimizer
+
+```
+"Optimize this SQL query:
+[paste query]
+
+1. Run EXPLAIN ANALYZE on the current query
+2. Identify the slowest operations
+3. Suggest index additions
+4. Rewrite the query for better performance
+5. Run EXPLAIN ANALYZE on the optimized version
+6. Compare execution times"
+```
+
+### 79.3 Data Quality Checks
+
+```yaml
+---
+name: data-quality
+description: Generate data quality checks for a table or dataset
+disable-model-invocation: true
+---
+
+Generate data quality checks for: $ARGUMENTS
+
+For each column, generate checks for:
+- Nullability (should this column allow NULLs?)
+- Uniqueness (should values be unique?)
+- Range (min/max for numeric columns)
+- Format (regex for string columns like email, phone)
+- Referential integrity (foreign key relationships)
+- Freshness (is data being updated as expected?)
+- Volume (row count within expected range?)
+- Distribution (no unexpected skew?)
+
+Output as executable SQL or Python assertions.
+```
+
+---
+
+## 80. The Complete Claude Code Command Reference
+
+### 80.1 Built-In Commands
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show help and available commands |
+| `/clear` | Clear conversation and start fresh |
+| `/compact [instructions]` | Summarize conversation to free context |
+| `/cost` | Show token usage and cost for current session |
+| `/stats` | Show usage patterns (subscribers) |
+| `/context` | Show what's consuming context space |
+| `/model [alias]` | Switch model |
+| `/effort [level]` | Set effort level (low/medium/high/max) |
+| `/config` | Open configuration menu |
+| `/permissions` | Manage permission rules |
+| `/memory` | Browse CLAUDE.md and auto memory files |
+| `/init` | Generate starter CLAUDE.md |
+| `/hooks` | Browse configured hooks |
+| `/mcp` | Check MCP server status and auth |
+| `/agents` | Manage sub-agents |
+| `/plugin` | Browse plugin marketplace |
+| `/vim` | Toggle vim editing mode |
+| `/theme` | Change syntax highlighting theme |
+| `/terminal-setup` | Configure terminal for shortcuts |
+| `/statusline` | Configure custom status line |
+| `/chrome` | Manage Chrome extension connection |
+| `/mobile` | Show QR code for Claude mobile app |
+| `/remote-control` | Start Remote Control session |
+| `/remote-env` | Select default cloud environment |
+| `/desktop` | Hand off session to Desktop app |
+| `/teleport` | Pull web session into terminal |
+| `/tasks` | View background tasks |
+| `/resume` | Resume a previous session |
+| `/rename [name]` | Name the current session |
+| `/rewind` | Open rewind menu |
+| `/bug` | Report a bug with transcript |
+| `/login` | Sign in to Claude.ai |
+| `/logout` | Sign out |
+| `/status` | Show current model and account info |
+| `/install-github-app` | Set up GitHub Actions |
+| `/btw [question]` | Quick side question (no history) |
+| `/add-dir [path]` | Add working directory |
+| `/reload-plugins` | Reload plugin configurations |
+
+### 80.2 Bundled Skills
+
+| Skill | Description |
+|-------|-------------|
+| `/batch <instruction>` | Parallel changes across codebase |
+| `/claude-api` | Load Claude API reference |
+| `/debug [description]` | Troubleshoot current session |
+| `/loop [interval] <prompt>` | Run prompt on recurring schedule |
+| `/simplify [focus]` | Review and fix code quality issues |
+
+### 80.3 Keyboard Shortcuts Quick Reference
+
+| Shortcut | Action |
+|----------|--------|
+| `Esc` | Stop Claude |
+| `Esc+Esc` | Rewind menu |
+| `Ctrl+C` | Cancel |
+| `Ctrl+D` | Exit |
+| `Ctrl+G` | Open in editor |
+| `Ctrl+L` | Clear screen |
+| `Ctrl+O` | Toggle verbose |
+| `Ctrl+R` | Search history |
+| `Ctrl+B` | Background task |
+| `Ctrl+T` | Toggle task list |
+| `Ctrl+V` | Paste image |
+| `Shift+Tab` | Toggle permission mode |
+| `Option+P` | Switch model |
+| `Option+T` | Toggle thinking |
+| `\+Enter` | Multiline input |
+| `!command` | Bash mode |
+| `@file` | File mention |
+| `/command` | Slash command |
+
+---
+
+> **This is the most comprehensive Claude Code tutorial available — 80 chapters covering every feature, pattern, and monetization scenario.**
 >
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
