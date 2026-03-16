@@ -51,6 +51,8 @@
 42. [VS Code Extension — IDE Integration](#42-vs-code-extension--ide-integration)
 43. [JetBrains Integration](#43-jetbrains-integration)
 44. [Getting Started Roadmap — By User Type](#44-getting-started-roadmap--by-user-type)
+45. [Interactive Mode — Keyboard Mastery](#45-interactive-mode--keyboard-mastery)
+46. [Feature Decision Guide — What to Use When](#46-feature-decision-guide--what-to-use-when)
 
 ---
 
@@ -3332,11 +3334,152 @@ cd your-project && claude
 
 ---
 
+## 45. Interactive Mode — Keyboard Mastery
+
+### 45.1 Essential Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+C` | Cancel current input or generation |
+| `Ctrl+D` | Exit Claude Code |
+| `Ctrl+G` | Open prompt in your text editor |
+| `Ctrl+L` | Clear terminal screen (keeps conversation) |
+| `Ctrl+O` | Toggle verbose output (see thinking) |
+| `Ctrl+R` | Reverse search command history |
+| `Ctrl+V` | Paste image from clipboard |
+| `Ctrl+B` | Background running tasks (tmux: press twice) |
+| `Ctrl+T` | Toggle task list |
+| `Ctrl+F` | Kill all background agents (press twice to confirm) |
+| `Esc + Esc` | Rewind or summarize |
+| `Shift+Tab` | Toggle permission modes |
+| `Option+P` / `Alt+P` | Switch model |
+| `Option+T` / `Alt+T` | Toggle extended thinking |
+
+### 45.2 Quick Commands
+
+| Prefix | Action |
+|--------|--------|
+| `/` | Slash command or skill |
+| `!` | Bash mode (run commands directly, output added to context) |
+| `@` | File path mention with autocomplete |
+
+### 45.3 Multiline Input
+
+| Method | Shortcut |
+|--------|----------|
+| Quick escape | `\` + `Enter` |
+| macOS default | `Option+Enter` |
+| Shift+Enter | Works in iTerm2, WezTerm, Ghostty, Kitty |
+| Control sequence | `Ctrl+J` |
+| Paste mode | Paste directly (for code blocks) |
+
+### 45.4 Vim Mode
+
+Enable with `/vim` or permanently via `/config`.
+
+Key bindings: `h/j/k/l` navigation, `i/a/o` insert modes, `dd/cc/yy` editing, `w/b/e` word movement, text objects (`iw`, `i"`, `i(`), and `.` to repeat.
+
+### 45.5 Side Questions with /btw
+
+Quick questions that don't enter conversation history:
+
+```
+/btw what was the name of that config file again?
+```
+
+- Works while Claude is processing (doesn't interrupt)
+- No tool access (answers from current context only)
+- Single response, no follow-ups
+- Low cost (reuses prompt cache)
+
+### 45.6 Bash Mode with ! Prefix
+
+```
+! npm test
+! git status
+! ls -la
+```
+
+Runs commands directly, adds output to conversation context. Supports `Ctrl+B` backgrounding and Tab autocomplete from history.
+
+### 45.7 Prompt Suggestions
+
+After Claude responds, a grayed-out suggestion appears based on conversation history. Press `Tab` to accept, `Enter` to accept and submit, or start typing to dismiss.
+
+### 45.8 Task List
+
+Claude creates task lists for complex multi-step work. Press `Ctrl+T` to toggle visibility. Share across sessions with `CLAUDE_CODE_TASK_LIST_ID=my-project claude`.
+
+### 45.9 PR Review Status
+
+When working on a branch with an open PR, a clickable link appears in the footer with color-coded review state (green=approved, yellow=pending, red=changes requested, gray=draft, purple=merged).
+
+---
+
+## 46. Feature Decision Guide — What to Use When
+
+### 46.1 Quick Decision Matrix
+
+| I want to... | Use |
+|---|---|
+| Set coding standards for all sessions | **CLAUDE.md** |
+| Scope rules to specific file types | **`.claude/rules/`** with `paths` frontmatter |
+| Create a reusable workflow | **Skill** |
+| Connect to an external service | **MCP server** |
+| Automate something that must always happen | **Hook** |
+| Isolate a task from my main context | **Sub-agent** |
+| Run parallel workers that communicate | **Agent team** |
+| Package and share extensions | **Plugin** |
+| Run Claude in CI/CD | **GitHub Actions** or **GitLab CI/CD** |
+| Get automated PR reviews | **Code Review** (managed) or **GitHub Actions** |
+| Run Claude from scripts | **Agent SDK** (`claude -p`) |
+| Schedule recurring tasks | **Desktop scheduled tasks** or `/loop` |
+
+### 46.2 CLAUDE.md vs. Skills vs. Rules
+
+| | CLAUDE.md | `.claude/rules/` | Skill |
+|---|---|---|---|
+| **Loads** | Every session | Every session (or on file match) | On demand |
+| **Scope** | Whole project | Can be path-scoped | Task-specific |
+| **Best for** | Core conventions | Language/directory-specific rules | Reference material, workflows |
+| **Size target** | <200 lines | Any size | <500 lines per SKILL.md |
+
+### 46.3 Sub-Agents vs. Agent Teams
+
+| | Sub-Agents | Agent Teams |
+|---|---|---|
+| **Communication** | Report back to main only | Message each other directly |
+| **Coordination** | Main agent manages | Shared task list, self-coordinating |
+| **Token cost** | Lower | Higher (each = separate instance) |
+| **Best for** | Focused tasks, quick workers | Complex work needing discussion |
+
+### 46.4 Context Cost by Feature
+
+| Feature | When Loaded | Context Cost |
+|---------|-------------|-------------|
+| **CLAUDE.md** | Session start | Every request |
+| **Skills** | Descriptions at start, full on use | Low until invoked |
+| **MCP servers** | Session start | Every request (tool search helps) |
+| **Sub-agents** | When spawned | Isolated (zero on main) |
+| **Hooks** | On trigger | Zero (runs externally) |
+
+### 46.5 Rule of Thumb
+
+1. Start with **CLAUDE.md** for project conventions
+2. Add **skills** for reusable workflows
+3. Connect **MCP servers** for external tools
+4. Add **hooks** for must-happen automation
+5. Use **sub-agents** when context gets full
+6. Package into **plugins** when sharing with others
+
+---
+
 > **This tutorial covers every feature of Claude Code as of March 2026.**
 > Star the repo and check back — new features are added as Claude Code evolves.
 >
 > Built with Claude Code (Opus 4.6). Continuously updated.
 > Repository: [github.com/sscien/open_claw](https://github.com/sscien/open_claw)
+
 
 
 
